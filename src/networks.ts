@@ -16,20 +16,19 @@
  *
  * Entries are sorted by `chainId`.
  *
- * Not wired into anything yet — this is a config drop, intentionally standalone.
  */
 
 const ETHERSCAN_V2_API = "https://api.etherscan.io/v2/api";
 
 const alchemyKey =
-  typeof process !== "undefined" ? process.env.ALCHEMY_KEY ?? "" : "";
+  typeof process !== "undefined" ? (process.env.ALCHEMY_KEY ?? "") : "";
 
 const ETHERSCAN_V2_CHAIN_IDS = new Set([
   1, 10, 50, 51, 56, 100, 130, 143, 146, 199, 204, 252, 480, 988, 999, 1029,
-  1284, 1285, 1287, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 5000, 5611, 6343,
-  8453, 9745, 9746, 10143, 11124, 33111, 33139, 42161, 42220, 43114, 43522,
-  59144, 80069, 80094, 81457, 167000, 167013, 560048, 737373, 747474, 11155111,
-  168587773,
+  1284, 1285, 1287, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 4663, 5000, 5611,
+  6343, 8453, 9745, 9746, 10143, 11124, 33111, 33139, 42161, 42220, 43114,
+  43522, 59144, 80069, 80094, 81457, 84532, 167000, 167013, 560048, 737373,
+  747474, 11155111, 168587773,
 ]);
 
 /** Build an Alchemy RPC URL from its endpoint subdomain. */
@@ -69,13 +68,6 @@ export const networks: NetworkConfig[] = [
     etherscanApiUrl: etherscanV2(10),
   },
   {
-    name: "flare",
-    chainId: 14,
-    alchemyRpcUrl: null,
-    publicRpc: "https://flare-api.flare.network/ext/C/rpc",
-    etherscanApiUrl: null,
-  },
-  {
     name: "bnb",
     chainId: 56,
     alchemyRpcUrl: alchemy("bnb-mainnet"),
@@ -85,7 +77,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "gnosis",
     chainId: 100,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("gnosis-mainnet"),
     publicRpc: "https://rpc.gnosischain.com",
     etherscanApiUrl: etherscanV2(100),
   },
@@ -106,21 +98,21 @@ export const networks: NetworkConfig[] = [
   {
     name: "sonic",
     chainId: 146,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("sonic-mainnet"),
     publicRpc: "https://rpc.soniclabs.com",
     etherscanApiUrl: etherscanV2(146),
   },
   {
     name: "worldchain",
     chainId: 480,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("worldchain-mainnet"),
     publicRpc: "https://worldchain-mainnet.g.alchemy.com/public",
     etherscanApiUrl: etherscanV2(480),
   },
   {
-    name: "hyperevm",
+    name: "hyperliquid",
     chainId: 999,
-    alchemyRpcUrl: null, //alchemy("hyperliquid-mainnet"),
+    alchemyRpcUrl: alchemy("hyperliquid-mainnet"),
     publicRpc: null,
     etherscanApiUrl: etherscanV2(999),
   },
@@ -130,6 +122,13 @@ export const networks: NetworkConfig[] = [
     alchemyRpcUrl: alchemy("megaeth-mainnet"),
     publicRpc: null,
     etherscanApiUrl: etherscanV2(4326),
+  },
+  {
+    name: "robinhood",
+    chainId: 4663,
+    alchemyRpcUrl: alchemy("robinhood-mainnet"),
+    publicRpc: "https://rpc.mainnet.chain.robinhood.com",
+    etherscanApiUrl: etherscanV2(4663),
   },
   {
     name: "mantle",
@@ -148,7 +147,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "plasma",
     chainId: 9745,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("plasma-mainnet"),
     publicRpc: "https://rpc.plasma.to",
     etherscanApiUrl: etherscanV2(9745),
   },
@@ -190,16 +189,23 @@ export const networks: NetworkConfig[] = [
   {
     name: "bob",
     chainId: 60808,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("bob-mainnet"),
     publicRpc: "https://rpc.gobob.xyz",
     etherscanApiUrl: null,
   },
   {
     name: "berachain",
     chainId: 80094,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("berachain-mainnet"),
     publicRpc: "https://rpc.berachain.com",
     etherscanApiUrl: etherscanV2(80094),
+  },
+  {
+    name: "baseSepolia",
+    chainId: 84532,
+    alchemyRpcUrl: alchemy("base-sepolia"),
+    publicRpc: null,
+    etherscanApiUrl: etherscanV2(84532),
   },
   {
     name: "scroll",
@@ -211,7 +217,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "katana",
     chainId: 747474,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("katana-mainnet"),
     publicRpc: "https://rpc.katana.network",
     etherscanApiUrl: etherscanV2(747474),
   },
