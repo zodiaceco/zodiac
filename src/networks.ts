@@ -13,8 +13,8 @@
  *                       Most chains use the Etherscan V2 multichain endpoint
  *                       (with `?chainid=`); chains not on Etherscan V2 get a
  *                       chain-specific Etherscan-compatible explorer instead —
- *                       a Blockscout instance (ink, bob) or another
- *                       Etherscan-family explorer (scrollscan, flarescan).
+ *                       a Blockscout instance (ink, bob, robinhood) or another
+ *                       Etherscan-family explorer (scrollscan).
  *                       Etherscan V2 support was checked against
  *                       api.etherscan.io/v2/chainlist. The endpoint serves both
  *                       reads and contract verification; `eth_*` calls go to the
@@ -23,7 +23,6 @@
  *
  * Entries are sorted by `chainId`.
  *
- * Not wired into anything yet — this is a config drop, intentionally standalone.
  */
 
 const ETHERSCAN_V2_API = "https://api.etherscan.io/v2/api";
@@ -33,11 +32,11 @@ const alchemyKey =
 
 const ETHERSCAN_V2_CHAIN_IDS = new Set([
   1, 10, 50, 51, 56, 97, 100, 130, 137, 143, 146, 199, 204, 252, 480, 988, 999,
-  1029, 1284, 1285, 1287, 1301, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 4801,
-  5000, 5003, 5611, 6343, 8453, 9745, 9746, 10143, 11124, 14601, 33111, 33139,
-  42161, 42220, 43113, 43114, 43522, 59141, 59144, 80002, 80069, 80094, 81457,
-  84532, 167000, 167013, 421614, 560048, 737373, 747474, 11142220, 11155111,
-  11155420, 168587773,
+  1029, 1284, 1285, 1287, 1301, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 4663,
+  4801, 5000, 5003, 5611, 6343, 8453, 9745, 9746, 10143, 11124, 14601, 33111,
+  33139, 42161, 42220, 43113, 43114, 43522, 59141, 59144, 80002, 80069, 80094,
+  81457, 84532, 167000, 167013, 421614, 560048, 737373, 747474, 11142220,
+  11155111, 11155420, 168587773,
 ]);
 
 /** Build an Alchemy RPC URL from its endpoint subdomain. */
@@ -89,14 +88,6 @@ export const networks: NetworkConfig[] = [
     etherscanApiUrl: etherscanV2(10),
   },
   {
-    name: "flare",
-    chainId: 14,
-    alchemyRpcUrl: null,
-    publicRpc: "https://flare-api.flare.network/ext/C/rpc",
-    // Blockscout instance (not on Etherscan V2); public, ignores API key.
-    etherscanApiUrl: "https://flare-explorer.flare.network/api",
-  },
-  {
     name: "bnb",
     chainId: 56,
     alchemyRpcUrl: alchemy("bnb-mainnet"),
@@ -106,7 +97,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "gnosis",
     chainId: 100,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("gnosis-mainnet"),
     publicRpc: "https://rpc.gnosischain.com",
     etherscanApiUrl: etherscanV2(100),
   },
@@ -127,21 +118,21 @@ export const networks: NetworkConfig[] = [
   {
     name: "sonic",
     chainId: 146,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("sonic-mainnet"),
     publicRpc: "https://rpc.soniclabs.com",
     etherscanApiUrl: etherscanV2(146),
   },
   {
     name: "worldchain",
     chainId: 480,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("worldchain-mainnet"),
     publicRpc: "https://worldchain-mainnet.g.alchemy.com/public",
     etherscanApiUrl: etherscanV2(480),
   },
   {
-    name: "hyperevm",
+    name: "hyperliquid",
     chainId: 999,
-    alchemyRpcUrl: null, //alchemy("hyperliquid-mainnet"),
+    alchemyRpcUrl: alchemy("hyperliquid-mainnet"),
     publicRpc: "https://rpc.hyperliquid.xyz/evm",
     etherscanApiUrl: etherscanV2(999),
   },
@@ -151,6 +142,15 @@ export const networks: NetworkConfig[] = [
     alchemyRpcUrl: alchemy("megaeth-mainnet"),
     publicRpc: null,
     etherscanApiUrl: etherscanV2(4326),
+  },
+  {
+    name: "robinhood",
+    chainId: 4663,
+    alchemyRpcUrl: alchemy("robinhood-mainnet"),
+    publicRpc: "https://rpc.mainnet.chain.robinhood.com",
+    // Blockscout instance (Etherscan V2 needs a paid plan here); public,
+    // ignores API key.
+    etherscanApiUrl: "https://robinhoodchain.blockscout.com/api",
   },
   {
     name: "mantle",
@@ -169,7 +169,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "plasma",
     chainId: 9745,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("plasma-mainnet"),
     publicRpc: "https://rpc.plasma.to",
     etherscanApiUrl: etherscanV2(9745),
   },
@@ -212,7 +212,7 @@ export const networks: NetworkConfig[] = [
   {
     name: "bob",
     chainId: 60808,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("bob-mainnet"),
     publicRpc: "https://rpc.gobob.xyz",
     // Blockscout instance (not on Etherscan V2); public, ignores API key.
     etherscanApiUrl: "https://explorer.gobob.xyz/api",
@@ -220,9 +220,16 @@ export const networks: NetworkConfig[] = [
   {
     name: "berachain",
     chainId: 80094,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("berachain-mainnet"),
     publicRpc: "https://rpc.berachain.com",
     etherscanApiUrl: etherscanV2(80094),
+  },
+  {
+    name: "baseSepolia",
+    chainId: 84532,
+    alchemyRpcUrl: alchemy("base-sepolia"),
+    publicRpc: null,
+    etherscanApiUrl: etherscanV2(84532),
   },
   {
     name: "scroll",
@@ -233,17 +240,9 @@ export const networks: NetworkConfig[] = [
     etherscanApiUrl: "https://scrollscan.com/api",
   },
   {
-    name: "robinhood",
-    chainId: 4663,
-    alchemyRpcUrl: alchemy("robinhood-mainnet"),
-    publicRpc: "https://rpc.mainnet.chain.robinhood.com",
-    // Blockscout instance (not on Etherscan V2); public, ignores API key.
-    etherscanApiUrl: "https://robinhoodchain.blockscout.com/api",
-  },
-  {
     name: "katana",
     chainId: 747474,
-    alchemyRpcUrl: null,
+    alchemyRpcUrl: alchemy("katana-mainnet"),
     publicRpc: "https://rpc.katana.network",
     etherscanApiUrl: etherscanV2(747474),
   },
