@@ -44,6 +44,7 @@ export const SupportedNetworks = Object.freeze({
   MEGAETH: 4326,
   ROBINHOOD: 4663,
   MANTLE: 5000,
+  ARC: 5042,
   BASE: 8453,
   PLASMA: 9745,
   ARBITRUM: 42161,
