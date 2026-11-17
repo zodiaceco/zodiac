@@ -1,0 +1,42 @@
+{
+  "contractName": "MultisendEncoder",
+  "sourceName": "contracts/MultisendEncoder.sol",
+  "compilerVersion": "v0.8.9+commit.e5eed63a",
+  "constructorArguments": "",
+  "compilerInput": {
+    "language": "Solidity",
+    "sources": {
+      "contracts/MultisendEncoder.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity ^0.8.6;\n\nimport \"@gnosis.pm/safe-contracts/contracts/common/Enum.sol\";\nimport \"@gnosis.pm/safe-contracts/contracts/libraries/MultiSend.sol\";\n\nlibrary MultisendEncoder {\n    error NoTransactions();\n    error UnequalArraysLengths();\n\n    function encodeMultisend(\n        address multisend,\n        address[] memory targets,\n        uint256[] memory values,\n        bytes[] memory calldatas\n    )\n        public\n        pure\n        returns (\n            address to,\n            uint256 value,\n            bytes memory data,\n            Enum.Operation operation\n        )\n    {\n        if (targets.length == 0) {\n            revert NoTransactions();\n        }\n        if (targets.length != values.length || values.length != calldatas.length) {\n            revert UnequalArraysLengths();\n        }\n\n        if (targets.length > 1) {\n            to = multisend;\n            value = 0;\n            data = hex\"\";\n            for (uint256 i; i < targets.length; i++) {\n                data = abi.encodePacked(\n                    data,\n                    abi.encodePacked(\n                        uint8(Enum.Operation.Call), /// operation as an uint8.\n                        targets[i], /// to as an address.\n                        values[i], /// value as an uint256.\n                        uint256(calldatas[i].length), /// data length as an uint256.\n                        calldatas[i] /// data as bytes.\n                    )\n                );\n            }\n            data = abi.encodeWithSignature(\"multiSend(bytes)\", data);\n            operation = Enum.Operation.DelegateCall;\n        } else {\n            to = targets[0];\n            value = values[0];\n            data = calldatas[0];\n            operation = Enum.Operation.Call;\n        }\n    }\n}\n"
+      },
+      "@gnosis.pm/safe-contracts/contracts/common/Enum.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity >=0.7.0 <0.9.0;\n\n/// @title Enum - Collection of enums\n/// @author Richard Meissner - <richard@gnosis.pm>\ncontract Enum {\n    enum Operation {Call, DelegateCall}\n}\n"
+      },
+      "@gnosis.pm/safe-contracts/contracts/libraries/MultiSend.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity >=0.7.0 <0.9.0;\n\n/// @title Multi Send - Allows to batch multiple transactions into one.\n/// @author Nick Dodson - <nick.dodson@consensys.net>\n/// @author Gonçalo Sá - <goncalo.sa@consensys.net>\n/// @author Stefan George - <stefan@gnosis.io>\n/// @author Richard Meissner - <richard@gnosis.io>\ncontract MultiSend {\n    address private immutable multisendSingleton;\n\n    constructor() {\n        multisendSingleton = address(this);\n    }\n\n    /// @dev Sends multiple transactions and reverts all if one fails.\n    /// @param transactions Encoded transactions. Each transaction is encoded as a packed bytes of\n    ///                     operation as a uint8 with 0 for a call or 1 for a delegatecall (=> 1 byte),\n    ///                     to as a address (=> 20 bytes),\n    ///                     value as a uint256 (=> 32 bytes),\n    ///                     data length as a uint256 (=> 32 bytes),\n    ///                     data as bytes.\n    ///                     see abi.encodePacked for more information on packed encoding\n    /// @notice This method is payable as delegatecalls keep the msg.value from the previous call\n    ///         If the calling method (e.g. execTransaction) received ETH this would revert otherwise\n    function multiSend(bytes memory transactions) public payable {\n        require(address(this) != multisendSingleton, \"MultiSend should only be called via delegatecall\");\n        // solhint-disable-next-line no-inline-assembly\n        assembly {\n            let length := mload(transactions)\n            let i := 0x20\n            for {\n                // Pre block is not used in \"while mode\"\n            } lt(i, length) {\n                // Post block is not used in \"while mode\"\n            } {\n                // First byte of the data is the operation.\n                // We shift by 248 bits (256 - 8 [operation byte]) it right since mload will always load 32 bytes (a word).\n                // This will also zero out unused data.\n                let operation := shr(0xf8, mload(add(transactions, i)))\n                // We offset the load address by 1 byte (operation byte)\n                // We shift it right by 96 bits (256 - 160 [20 address bytes]) to right-align the data and zero out unused data.\n                let to := shr(0x60, mload(add(transactions, add(i, 0x01))))\n                // We offset the load address by 21 byte (operation byte + 20 address bytes)\n                let value := mload(add(transactions, add(i, 0x15)))\n                // We offset the load address by 53 byte (operation byte + 20 address bytes + 32 value bytes)\n                let dataLength := mload(add(transactions, add(i, 0x35)))\n                // We offset the load address by 85 byte (operation byte + 20 address bytes + 32 value bytes + 32 data length bytes)\n                let data := add(transactions, add(i, 0x55))\n                let success := 0\n                switch operation\n                    case 0 {\n                        success := call(gas(), to, value, data, dataLength, 0, 0)\n                    }\n                    case 1 {\n                        success := delegatecall(gas(), to, data, dataLength, 0, 0)\n                    }\n                if eq(success, 0) {\n                    revert(0, 0)\n                }\n                // Next entry starts at 85 byte + data length\n                i := add(i, add(0x55, dataLength))\n            }\n        }\n    }\n}\n"
+      }
+    },
+    "settings": {
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "*": [
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "devdoc",
+            "userdoc",
+            "metadata",
+            "abi"
+          ]
+        }
+      },
+      "metadata": {
+        "useLiteralContent": true
+      },
+      "libraries": {}
+    }
+  }
+}

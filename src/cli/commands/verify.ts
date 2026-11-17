@@ -1,13 +1,13 @@
-import { Asset, readArtifact, SourceCodeFile } from "../artifact.js";
+import { ArtifactContract, readArtifact, VerifiedSource } from "../artifact.js";
 import {
   checkVerificationStatus,
   getSourceCode,
   verifySourceCode,
 } from "../etherscan.js";
 import { getCode } from "../rpc.js";
-import { MatrixTask, runMatrixCommand } from "./_table.js";
+import { MatrixTask, runMatrixCommand } from "./_matrix.js";
 import { NetworkConfig, rpcUrlFor } from "../networks.js";
-import { Mastercopy } from "../args.js";
+import { Mastercopy } from "../mastercopy.js";
 
 export async function run(args: string[]): Promise<void> {
   await runMatrixCommand("verify", verify, args);
@@ -15,55 +15,55 @@ export async function run(args: string[]): Promise<void> {
 
 const verify: MatrixTask = {
   legend: {
-    ok: "verified",
-    missing: "not verified",
+    done: "verified",
+    pending: "not verified",
     unknown: "couldn't get status",
     failed: "failed verification",
   },
 
   async check(mastercopy, network) {
-    // One unverified asset settles it, even if another couldn't be read.
+    // One unverified contract settles it, even if another couldn't be read.
     let firstError: unknown;
-    for (const asset of verifiableAssets(mastercopy, network)) {
+    for (const contract of verifiableContracts(mastercopy, network)) {
       try {
-        if (!(await isVerified(asset, network))) return "missing";
+        if (!(await isVerified(contract, network))) return "pending";
       } catch (error) {
         firstError ??= error;
       }
     }
     if (firstError) throw firstError;
-    return "ok";
+    return "done";
   },
 
   async apply(mastercopy, network) {
-    for (const asset of verifiableAssets(mastercopy, network)) {
-      if (await isVerified(asset, network)) continue;
+    for (const contract of verifiableContracts(mastercopy, network)) {
+      if (await isVerified(contract, network)) continue;
 
-      const code = await getCode(rpcUrlFor(network), asset.address);
-      if (code === "0x") throw new Error(`${asset.name}: not deployed`);
+      const code = await getCode(rpcUrlFor(network), contract.address);
+      if (code === "0x") throw new Error(`${contract.name}: not deployed`);
 
-      await submitAndWaitForVerification(network, asset);
+      await submitAndWaitForVerification(network, contract);
     }
   },
 };
 
-function verifiableAssets(
+function verifiableContracts(
   mastercopy: Mastercopy,
   network: NetworkConfig
-): Asset[] {
+): ArtifactContract[] {
   if (!network.etherscanApiUrl) throw new Error("no supported explorer");
 
-  const artifact = readArtifact(mastercopy.contractName, mastercopy.version);
+  const artifact = readArtifact(mastercopy.name, mastercopy.version);
   if (!artifact) throw new Error("no local artifact");
   return [...artifact.libraries, artifact.main];
 }
 
 async function isVerified(
-  asset: Asset,
+  contract: ArtifactContract,
   network: NetworkConfig
 ): Promise<boolean> {
   const source = await getSourceCode({
-    address: asset.address,
+    address: contract.address,
     network: network.name,
   });
   return source !== undefined;
@@ -71,23 +71,23 @@ async function isVerified(
 
 async function submitAndWaitForVerification(
   network: NetworkConfig,
-  asset: Asset
+  contract: ArtifactContract
 ): Promise<void> {
-  const sourceCode = asset.sourceCode;
+  const { source } = contract;
   const guid = await verifySourceCode({
-    address: asset.address,
+    address: contract.address,
     network: network.name,
-    sourceCode: JSON.stringify(sourceCode.input),
-    contractName: `${sourceCode.sourceName}:${sourceCode.contractName}`,
-    compilerVersion: sourceCode.compilerVersion,
-    constructorArguments: sourceCode.constructorArguments || "",
-    evmVersion: evmVersionFor(sourceCode),
+    sourceCode: JSON.stringify(source.compilerInput),
+    contractName: `${source.sourceName}:${source.contractName}`,
+    compilerVersion: source.compilerVersion,
+    constructorArguments: source.constructorArguments || "",
+    evmVersion: evmVersionFor(source),
   });
   if (guid.toLowerCase().includes("already verified")) return;
 
   const result = await waitForVerification(network, guid);
   if (!result.toLowerCase().includes("pass")) {
-    throw new Error(`${asset.name}: ${result}`);
+    throw new Error(`${contract.name}: ${result}`);
   }
 }
 
@@ -110,7 +110,7 @@ async function waitForVerification(
   return "verification timed out";
 }
 
-function evmVersionFor(sourceCode: SourceCodeFile): string {
-  const evmVersion = sourceCode.input?.settings?.evmVersion;
+function evmVersionFor(source: VerifiedSource): string {
+  const evmVersion = source.compilerInput?.settings?.evmVersion;
   return evmVersion && evmVersion !== "Default" ? evmVersion : "default";
 }

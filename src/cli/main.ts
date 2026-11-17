@@ -16,25 +16,25 @@ const USAGE = `zodiac — mastercopy artifact tooling
 
 Usage:
   zodiac deploy <name> <version> [--network a,b]
-      Deploy the missing local mastercopy artifacts for one version of a known
-      contract across configured networks.
+      Deploy the missing contracts of one version's local artifact across
+      configured networks.
 
   zodiac deploy list <name> [version] [--network a,b]
       Check whether a known contract is already deployed on each configured
       network (every version unless [version] is given).
 
   zodiac extract <name> <version> [network]
-      Extract one known mastercopy (source, ABI, bytecode) into
+      Extract one known mastercopy (ABI, source, deployment) into
       mastercopies/<name>/<version>/, replacing what is there once the new
       files are complete. The address comes from the canonical registry;
       source is read from [network] or, by default, the default explorer set.
 
   zodiac verify <name> <version> [--network a,b]
-      Verify the deployed local mastercopy artifacts for one version of a known
-      contract across configured explorers.
+      Verify the deployed contracts of one version's local artifact across
+      configured explorers.
 
   zodiac verify list <name> [version] [--network a,b]
-      Check whether a known contract's local artifact set is verified on each
+      Check whether a known contract's local artifact is verified on each
       configured explorer (every version unless [version] is given).
 
 --network limits deploy and verify to the given networks (names or chain ids).

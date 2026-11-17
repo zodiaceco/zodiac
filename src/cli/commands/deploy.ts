@@ -7,11 +7,15 @@ import {
 } from "ethers";
 import ethProviderImport from "eth-provider";
 
-import { Asset, Create2Deployment, readArtifact } from "../artifact.js";
-import { MatrixTask, runMatrixCommand } from "./_table.js";
+import {
+  ArtifactContract,
+  Create2Deployment,
+  readArtifact,
+} from "../artifact.js";
+import { MatrixTask, runMatrixCommand } from "./_matrix.js";
 import { NetworkConfig, rpcUrlFor } from "../networks.js";
 import { getCode } from "../rpc.js";
-import { ERC2470_FACTORY, encodeDeployment } from "../deployment.js";
+import { ERC2470_FACTORY, encodeFactoryCall } from "../create2.js";
 
 export async function run(args: string[]): Promise<void> {
   await runMatrixCommand("deploy", deploy, args);
@@ -33,28 +37,30 @@ const useFrame = ["1", "true", "yes", "on"].includes(
 
 const deploy: MatrixTask = {
   legend: {
-    ok: "deployed",
-    missing: "not deployed",
+    done: "deployed",
+    pending: "not deployed",
     unknown: "couldn't get status",
     failed: "failed deployment",
   },
 
-  // Every asset, not just the main one: a library can be missing on its own.
+  // Every contract, not just the main one: a library can be missing on its own.
   async check(mastercopy, network) {
-    const artifact = readArtifact(mastercopy.contractName, mastercopy.version);
+    const artifact = readArtifact(mastercopy.name, mastercopy.version);
     const addresses = artifact
-      ? [...artifact.libraries, artifact.main].map((asset) => asset.address)
+      ? [...artifact.libraries, artifact.main].map(
+          (contract) => contract.address
+        )
       : [mastercopy.address];
 
     const rpcUrl = rpcUrlFor(network);
     for (const address of addresses) {
-      if ((await getCode(rpcUrl, address)) === "0x") return "missing";
+      if ((await getCode(rpcUrl, address)) === "0x") return "pending";
     }
-    return "ok";
+    return "done";
   },
 
   async apply(mastercopy, network) {
-    const artifact = readArtifact(mastercopy.contractName, mastercopy.version);
+    const artifact = readArtifact(mastercopy.name, mastercopy.version);
     if (!artifact) throw new Error("no local artifact");
 
     const provider = new JsonRpcProvider(rpcUrlFor(network), network.chainId, {
@@ -62,21 +68,29 @@ const deploy: MatrixTask = {
     });
     let disposeSigner: (() => void) | undefined;
     try {
-      const missing: (Asset & { deployment: Create2Deployment })[] = [];
-      for (const asset of [...artifact.libraries, artifact.main]) {
-        if ((await provider.getCode(asset.address)) !== "0x") continue;
-        const { deployment } = asset;
+      const missing: (ArtifactContract & { deployment: Create2Deployment })[] =
+        [];
+      for (const contract of [...artifact.libraries, artifact.main]) {
+        if ((await provider.getCode(contract.address)) !== "0x") continue;
+        const { deployment } = contract;
         if (!deployment) {
-          throw new Error(`${asset.name}: no deployment in the local artifact`);
+          throw new Error(
+            `${contract.name}: no deployment in the local artifact`
+          );
         }
-        missing.push({ ...asset, deployment });
+        missing.push({ ...contract, deployment });
       }
       if (missing.length === 0) return;
 
       const { signer, dispose } = await createSigner(network, provider);
       disposeSigner = dispose;
-      for (const asset of missing) {
-        await deployAsset(provider, signer, asset.name, asset.deployment);
+      for (const contract of missing) {
+        await deployContract(
+          provider,
+          signer,
+          contract.name,
+          contract.deployment
+        );
       }
     } catch (error) {
       throw new Error(
@@ -91,7 +105,7 @@ const deploy: MatrixTask = {
   },
 };
 
-async function deployAsset(
+async function deployContract(
   provider: JsonRpcProvider,
   signer: Signer,
   name: string,
@@ -101,7 +115,7 @@ async function deployAsset(
     throw new Error(`factory ${deployment.factory} is not deployed`);
   }
 
-  const data = encodeDeployment(deployment);
+  const data = encodeFactoryCall(deployment);
   const tx = await signer.sendTransaction({
     to: deployment.factory,
     data,
@@ -134,7 +148,7 @@ async function deploymentGasLimit(
   // Some RPCs underestimate ERC-2470 deploys: the factory call succeeds even
   // when the inner CREATE2 runs out of gas. Add the inner estimate on top.
   const innerGas = await provider.estimateGas({
-    data: deployment.creationBytecode,
+    data: deployment.initCode,
   });
   return outerGas + innerGas;
 }

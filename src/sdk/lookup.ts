@@ -1,13 +1,17 @@
 import { compare, satisfies, valid } from "semver";
 
 import { ABIs } from "./abis/index.js";
-import { CanonicalAddresses, FAULTY, KnownContracts } from "./contracts.js";
+import {
+  CanonicalAddresses,
+  FaultyAddresses,
+  MastercopyName,
+} from "./contracts.js";
 
 type VersionedAbis = Record<string, readonly unknown[]>;
 type VersionedAddresses = Record<string, string>;
 
 export function getZodiacModuleAbi(
-  name: KnownContracts,
+  name: MastercopyName,
   versionRange = "*"
 ): readonly unknown[] {
   const versions: VersionedAbis = ABIs[name];
@@ -19,7 +23,7 @@ export function getZodiacModuleAbi(
   }
 
   const address = (
-    CanonicalAddresses as Partial<Record<KnownContracts, VersionedAddresses>>
+    CanonicalAddresses as Partial<Record<MastercopyName, VersionedAddresses>>
   )[name]?.[version];
 
   if (!address) {
@@ -32,11 +36,11 @@ export function getZodiacModuleAbi(
 }
 
 export function getZodiacModuleAddress(
-  name: KnownContracts,
+  name: MastercopyName,
   versionRange = "*"
 ): string {
   const versions = (
-    CanonicalAddresses as Partial<Record<KnownContracts, VersionedAddresses>>
+    CanonicalAddresses as Partial<Record<MastercopyName, VersionedAddresses>>
   )[name];
 
   if (!versions) {
@@ -57,7 +61,7 @@ export function getZodiacModuleAddress(
 function sanityCheckZodiacModuleAddress(address: string): void {
   const normalizedAddress = address.toLowerCase();
   const canonicalAddresses = flattenAddresses(CanonicalAddresses);
-  const faultyAddresses = flattenAddresses(FAULTY);
+  const faultyAddresses = flattenAddresses(FaultyAddresses);
 
   if (!canonicalAddresses.has(normalizedAddress)) {
     throw new Error(`Unknown Zodiac module address: ${address}`);
@@ -84,7 +88,7 @@ function matchingVersion<T>(
 }
 
 function flattenAddresses(
-  addresses: Partial<Record<KnownContracts, Record<string, string>>>
+  addresses: Partial<Record<MastercopyName, Record<string, string>>>
 ): Set<string> {
   return new Set(
     Object.values(addresses)

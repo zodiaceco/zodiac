@@ -12,86 +12,81 @@ import { cwd } from "process";
 
 import { getAddress } from "ethers";
 
-import { CanonicalAddresses } from "../sdk/contracts.js";
-import { predictAddress } from "./deployment.js";
+import { predictAddress } from "./create2.js";
+import { canonicalAddress } from "./mastercopy.js";
 
 /**
- * Artifacts written for a single asset (the main contract or a linked library)
- * under `mastercopies/<module>/<version>/<asset>/`. Each field maps to one file:
- * `abi.json`, `sourcecode.json`, `bytecode.json`.
+ * The on-disk layout:
+ *
+ *   mastercopies/<name>/<version>/<contract>/abi.json
+ *   mastercopies/<name>/<version>/<contract>/source.json
+ *   mastercopies/<name>/<version>/<contract>/deployment.json
+ *
+ * where <contract> is the main contract name or a linked-library name. Every
+ * contract has a `deployment.json` recording its address; a partial one (no
+ * recoverable factory deployment) records nothing else in it.
  */
 
-/** Contents of `sourcecode.json`. */
-export interface SourceCodeFile {
+/** Contents of `source.json`: what an explorer needs to verify the contract. */
+export interface VerifiedSource {
   contractName: string;
   sourceName: string;
   compilerVersion: string;
   /** abi-encoded constructor arguments (hex, no leading 0x). */
   constructorArguments?: string;
   /** Solidity standard-JSON compiler input (verified source + settings). */
-  input: any;
+  compilerInput: any;
 }
 
 /**
- * A CREATE2 deployment through a singleton factory: relaying
- * `creationBytecode` with `salt` to `factory` puts `bytecode` at `address`,
- * on any chain. Stored in `bytecode.json`.
+ * A CREATE2 deployment through a singleton factory: relaying `initCode` with
+ * `salt` to `factory` puts `runtimeCode` at `address`, on any chain. Stored
+ * in `deployment.json`.
  */
 export interface Create2Deployment {
-  /** CREATE2 address. Reproduces on every chain from factory + salt + creationBytecode. */
+  /** CREATE2 address. Reproduces on every chain from factory + salt + initCode. */
   address: string;
-  /** CREATE2 singleton factory the creation bytecode was relayed through. */
+  /** CREATE2 singleton factory the init code was relayed through. */
   factory: string;
   /** Salt recovered from the singleton-factory deployment transaction. */
   salt: string;
   /**
-   * Creation bytecode: the exact init code (creation code + abi-encoded
-   * constructor args, with any libraries linked). Relay this, with the same
-   * factory + salt, to redeploy at `address` on any other network.
+   * The exact init code (creation code + abi-encoded constructor args, with
+   * any libraries linked). Relay this, with the same factory + salt, to
+   * redeploy at `address` on any other network.
    */
-  creationBytecode: string;
+  initCode: string;
   /**
-   * Deployed (runtime) bytecode stored at `address` (`eth_getCode`). Not used
-   * to deploy — it's the on-chain identity, for comparison/verification.
+   * Runtime code stored at `address` (`eth_getCode`). Not used to deploy —
+   * it's the on-chain identity, for comparison/verification.
    */
-  bytecode: string;
+  runtimeCode: string;
 }
 
-/** A single fetched asset: one folder, three files. */
-export interface Asset {
+/** One contract of an artifact: one folder, three files. */
+export interface ArtifactContract {
   /** Folder name: the main contract name or a linked-library name. */
   name: string;
   address: string;
   abi: any;
-  sourceCode: SourceCodeFile;
+  source: VerifiedSource;
   /**
    * Absent on a partial fetch: the ABI and source were verified but the
-   * deployment couldn't be recovered from a known singleton factory. Such
-   * assets' `bytecode.json` records only their `address`.
+   * deployment couldn't be recovered from a known singleton factory. Such a
+   * contract's `deployment.json` records only its `address`.
    */
   deployment?: Create2Deployment;
 }
 
-/**
- * The on-disk layout:
- *
- *   mastercopies/<module>/<version>/<asset>/abi.json
- *   mastercopies/<module>/<version>/<asset>/sourcecode.json
- *   mastercopies/<module>/<version>/<asset>/bytecode.json
- *
- * where <asset> is the main contract name or a linked-library name. Every
- * asset has a `bytecode.json` recording its address; a partial asset (no
- * recoverable factory deployment) records nothing else in it.
- */
 export function defaultMastercopiesDir(): string {
   return path.join(cwd(), "mastercopies");
 }
 
 /** One `name@version`: the contract at the canonical address and its libraries. */
 interface Artifact {
-  main: Asset;
+  main: ArtifactContract;
   /** Linked libraries, sorted by name. */
-  libraries: Asset[];
+  libraries: ArtifactContract[];
 }
 
 const sameAddress = (a: string, b: string) => getAddress(a) === getAddress(b);
@@ -104,16 +99,6 @@ const subdirectories = (dir: string): string[] =>
         .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
         .map((entry) => entry.name)
         .sort();
-
-function canonicalAddress(name: string, version: string): string {
-  const versions: Record<string, string> | undefined =
-    CanonicalAddresses[name as keyof typeof CanonicalAddresses];
-  const address = versions?.[version];
-  if (!address) {
-    throw new Error(`${name}@${version} has no canonical address`);
-  }
-  return address;
-}
 
 /** Every `name@version` present on disk, sorted. */
 export function listArtifacts(
@@ -130,8 +115,8 @@ export function listArtifacts(
 /**
  * Load the artifact for `name@version`, or undefined when none is on disk.
  *
- * Nothing on disk is taken on trust: each asset's address is recomputed from
- * its factory, salt and creation bytecode, and the main asset must sit at the
+ * Nothing on disk is taken on trust: each contract's address is recomputed from
+ * its factory, salt and init code, and the main contract must sit at the
  * canonical address. A mismatch throws.
  */
 export function readArtifact(
@@ -147,14 +132,14 @@ export function readArtifact(
 /**
  * Write the artifact for `name@version`, replacing any existing one.
  *
- * The assets are written to a staging folder, validated the same way
+ * The contracts are written to a staging folder, validated the same way
  * `readArtifact` does, and only then renamed into place, so a failure leaves
  * the previous files untouched.
  */
 export function writeArtifact(
   name: string,
   version: string,
-  assets: Iterable<Asset>,
+  contracts: Iterable<ArtifactContract>,
   mastercopiesDir = defaultMastercopiesDir()
 ): Artifact {
   const dir = path.join(mastercopiesDir, name, version);
@@ -164,7 +149,7 @@ export function writeArtifact(
   rmSync(staging, { recursive: true, force: true });
   let artifact: Artifact;
   try {
-    for (const asset of assets) writeAsset(staging, asset);
+    for (const contract of contracts) writeContract(staging, contract);
     artifact = loadArtifact(staging, name, version);
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
@@ -191,57 +176,59 @@ export function writeArtifact(
 function loadArtifact(dir: string, name: string, version: string): Artifact {
   const id = `${name}@${version}`;
   const canonical = canonicalAddress(name, version);
-  const assets = subdirectories(dir).map((assetName) =>
-    readAsset(path.join(dir, assetName), `${id} ${assetName}`)
+  const contracts = subdirectories(dir).map((folder) =>
+    readContract(path.join(dir, folder), `${id} ${folder}`)
   );
 
-  const main = assets.find((asset) => sameAddress(asset.address, canonical));
+  const main = contracts.find((contract) =>
+    sameAddress(contract.address, canonical)
+  );
   if (!main) {
     throw new Error(
-      `${id}: no asset at the canonical address ${canonical} (found ${
-        assets.map((a) => `${a.name} @ ${a.address}`).join(", ") || "none"
+      `${id}: no contract at the canonical address ${canonical} (found ${
+        contracts.map((a) => `${a.name} @ ${a.address}`).join(", ") || "none"
       })`
     );
   }
-  return { main, libraries: assets.filter((asset) => asset !== main) };
+  return { main, libraries: contracts.filter((contract) => contract !== main) };
 }
 
-function readAsset(dir: string, label: string): Asset {
+function readContract(dir: string, label: string): ArtifactContract {
   const read = (file: string) => {
     const filePath = path.join(dir, file);
     if (!existsSync(filePath)) throw new Error(`${label}: missing ${file}`);
     return JSON.parse(readFileSync(filePath, "utf8"));
   };
 
-  const file = read("bytecode.json") as Partial<Create2Deployment>;
-  const { address, factory, salt, creationBytecode, bytecode } = file;
-  if (!address) throw new Error(`${label}: bytecode.json has no address`);
+  const file = read("deployment.json") as Partial<Create2Deployment>;
+  const { address, factory, salt, initCode, runtimeCode } = file;
+  if (!address) throw new Error(`${label}: deployment.json has no address`);
 
-  const asset: Asset = {
+  const contract: ArtifactContract = {
     name: path.basename(dir),
     address,
     abi: read("abi.json"),
-    sourceCode: read("sourcecode.json"),
+    source: read("source.json"),
   };
 
-  if (creationBytecode !== undefined) {
-    if (!factory || !salt || !bytecode) {
-      throw new Error(`${label}: bytecode.json is incomplete`);
+  if (initCode !== undefined) {
+    if (!factory || !salt || !runtimeCode) {
+      throw new Error(`${label}: deployment.json is incomplete`);
     }
-    const predicted = predictAddress({ factory, salt, creationBytecode });
+    const predicted = predictAddress({ factory, salt, initCode });
     if (!sameAddress(predicted, address)) {
       throw new Error(
-        `${label}: creation bytecode deploys to ${predicted}, not the recorded ${address}`
+        `${label}: init code deploys to ${predicted}, not the recorded ${address}`
       );
     }
-    asset.deployment = { address, factory, salt, creationBytecode, bytecode };
+    contract.deployment = { address, factory, salt, initCode, runtimeCode };
   }
 
-  return asset;
+  return contract;
 }
 
-function writeAsset(artifactDir: string, asset: Asset): void {
-  const dir = path.join(artifactDir, asset.name);
+function writeContract(artifactDir: string, contract: ArtifactContract): void {
+  const dir = path.join(artifactDir, contract.name);
   mkdirSync(dir, { recursive: true });
 
   const write = (file: string, content: unknown) =>
@@ -250,7 +237,10 @@ function writeAsset(artifactDir: string, asset: Asset): void {
       JSON.stringify(content, null, 2),
       "utf8"
     );
-  write("abi.json", asset.abi);
-  write("sourcecode.json", asset.sourceCode);
-  write("bytecode.json", asset.deployment ?? { address: asset.address });
+  write("abi.json", contract.abi);
+  write("source.json", contract.source);
+  write(
+    "deployment.json",
+    contract.deployment ?? { address: contract.address }
+  );
 }

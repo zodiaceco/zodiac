@@ -1,4 +1,4 @@
-import { KnownContracts } from "../contracts.js";
+import { MastercopyName } from "../contracts.js";
 import { bridge_1_0_0_ABI } from "./bridge/1.0.0.js";
 import { circulatingSupplyERC20_1_0_0_ABI } from "./circulatingSupplyERC20/1.0.0.js";
 import { circulatingSupplyERC20_1_1_0_ABI } from "./circulatingSupplyERC20/1.1.0.js";
@@ -109,4 +109,4 @@ export const ABIs = {
   tellor: {
     "2.1.0": tellor_2_1_0_ABI,
   },
-} as const satisfies Record<KnownContracts, Record<string, readonly unknown[]>>;
+} as const satisfies Record<MastercopyName, Record<string, readonly unknown[]>>;

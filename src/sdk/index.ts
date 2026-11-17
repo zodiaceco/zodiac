@@ -7,6 +7,6 @@ export {
 
 export { SupportedNetworks } from "./chains.js";
 
-export { CanonicalAddresses, KnownContracts } from "./contracts.js";
+export { CanonicalAddresses, MastercopyName } from "./contracts.js";
 
 export { getZodiacModuleAbi, getZodiacModuleAddress } from "./lookup.js";

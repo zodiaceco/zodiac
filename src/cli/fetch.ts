@@ -7,19 +7,19 @@ import {
   getTransaction,
 } from "./etherscan.js";
 import { getCode } from "./rpc.js";
-import { predictAddress, recoverDeployment } from "./deployment.js";
-import { Asset, Create2Deployment } from "./artifact.js";
+import { predictAddress, decodeFactoryCall } from "./create2.js";
+import { ArtifactContract, Create2Deployment } from "./artifact.js";
 
-export interface FetchedMastercopy {
-  assets: Map<string, Asset>;
+export interface FetchedArtifact {
+  contracts: Map<string, ArtifactContract>;
   errors: string[];
 }
 
 /**
- * Fetch an asset (and, recursively, every library it links) from a block
+ * Fetch a contract (and, recursively, every library it links) from a block
  * explorer.
  */
-export async function fetchMastercopy({
+export async function fetchArtifact({
   network,
   address,
   apiKey,
@@ -27,21 +27,21 @@ export async function fetchMastercopy({
   network: string | number;
   address: string;
   apiKey?: string;
-}): Promise<FetchedMastercopy | undefined> {
+}): Promise<FetchedArtifact | undefined> {
   const net = resolveNetwork(network);
-  const visited = new Map<string, Asset>();
+  const visited = new Map<string, ArtifactContract>();
   const errors: string[] = [];
-  const root = await fetchAsset({
+  const root = await fetchContract({
     address,
     networkName: net.name,
     apiKey,
     visited,
     errors,
   });
-  return root && { assets: visited, errors };
+  return root && { contracts: visited, errors };
 }
 
-async function fetchAsset({
+async function fetchContract({
   address,
   nameHint,
   networkName,
@@ -53,9 +53,9 @@ async function fetchAsset({
   nameHint?: string;
   networkName: string;
   apiKey?: string;
-  visited: Map<string, Asset>;
+  visited: Map<string, ArtifactContract>;
   errors: string[];
-}): Promise<Asset | undefined> {
+}): Promise<ArtifactContract | undefined> {
   const key = getAddress(address).toLowerCase();
   const existing = visited.get(key);
   if (existing) return existing;
@@ -64,25 +64,25 @@ async function fetchAsset({
   if (!source) return undefined;
   const name = nameHint || source.contractName;
 
-  // Record the asset as soon as ABI and source are in hand — before recursing,
+  // Record the contract as soon as ABI and source are in hand — before recursing,
   // so shared libraries dedupe correctly, and before deployment recovery, so a
-  // failure there yields a partial asset rather than losing the ABI.
-  const asset: Asset = {
+  // failure there yields a partial contract rather than losing the ABI.
+  const contract: ArtifactContract = {
     name,
     address: getAddress(address),
     abi: source.abi,
-    sourceCode: {
+    source: {
       contractName: source.contractName,
       sourceName: source.sourceName,
       compilerVersion: source.compilerVersion,
       constructorArguments: source.constructorArguments,
-      input: source.compilerInput,
+      compilerInput: source.compilerInput,
     },
   };
-  visited.set(key, asset);
+  visited.set(key, contract);
 
   try {
-    asset.deployment = await recoverCreate2Deployment({
+    contract.deployment = await recoverCreate2Deployment({
       address,
       key,
       name,
@@ -96,7 +96,7 @@ async function fetchAsset({
   // Recurse into linked libraries.
   for (const lib of enumerateLibraries(source.compilerInput)) {
     try {
-      const library = await fetchAsset({
+      const library = await fetchContract({
         address: lib.address,
         nameHint: lib.libraryName,
         networkName,
@@ -118,7 +118,7 @@ async function fetchAsset({
     }
   }
 
-  return asset;
+  return contract;
 }
 
 /** Recover the reproducible factory-deployment metadata for an address. */
@@ -146,25 +146,25 @@ async function recoverCreate2Deployment({
         network: networkName,
       })
     : undefined;
-  const recovered = tx && recoverDeployment(tx);
+  const recovered = tx && decodeFactoryCall(tx);
   if (!recovered) {
     throw new Error(
       `${name} @ ${address} was not deployed via a known singleton factory.`
     );
   }
 
-  const { factory, creationBytecode, salt } = recovered;
+  const { factory, initCode, salt } = recovered;
 
   // Sanity Check
-  const predicted = predictAddress({ factory, salt, creationBytecode });
+  const predicted = predictAddress({ factory, salt, initCode });
   if (predicted.toLowerCase() !== key) {
     throw new Error(
-      `${name} @ ${address}: recovered creation bytecode reproduces ` +
+      `${name} @ ${address}: recovered init code reproduces ` +
         `${predicted}, not the on-chain address. Refusing to write.`
     );
   }
 
-  const bytecode = await getCode(
+  const runtimeCode = await getCode(
     rpcUrlFor(resolveNetwork(networkName)),
     address
   );
@@ -173,8 +173,8 @@ async function recoverCreate2Deployment({
     address: predicted,
     factory,
     salt,
-    creationBytecode,
-    bytecode,
+    initCode,
+    runtimeCode,
   };
 }
 

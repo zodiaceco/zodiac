@@ -1,6 +1,7 @@
-import { parseCliArgs, resolveMastercopy, Mastercopy } from "../args.js";
+import { parseCliArgs } from "../args.js";
+import { resolveMastercopy, Mastercopy } from "../mastercopy.js";
 import { defaultMastercopiesDir, writeArtifact } from "../artifact.js";
-import { fetchMastercopy, FetchedMastercopy } from "../fetch.js";
+import { fetchArtifact, FetchedArtifact } from "../fetch.js";
 import { writeAbis } from "../abigen.js";
 
 export async function run(args: string[]): Promise<void> {
@@ -23,7 +24,7 @@ export async function run(args: string[]): Promise<void> {
 const DEFAULT_NETWORKS = ["mainnet", "gnosis", "arbitrum", "optimism", "base"];
 
 async function extractMastercopy({
-  mastercopy: { contractName, version, address },
+  mastercopy: { name, version, address },
   networks,
   mastercopiesDir,
 }: {
@@ -31,14 +32,14 @@ async function extractMastercopy({
   networks: string[];
   mastercopiesDir: string;
 }): Promise<void> {
-  const id = `${contractName}@${version}`;
+  const id = `${name}@${version}`;
   const failures: string[] = [];
-  let best: FetchedMastercopy | undefined;
+  let best: FetchedArtifact | undefined;
 
   for (const network of networks) {
-    let result: FetchedMastercopy | undefined;
+    let result: FetchedArtifact | undefined;
     try {
-      result = await fetchMastercopy({ network, address });
+      result = await fetchArtifact({ network, address });
     } catch (error) {
       failures.push(`${network}: ${(error as Error)?.message || error}`);
       continue;
@@ -59,9 +60,9 @@ async function extractMastercopy({
     );
   }
 
-  writeArtifact(contractName, version, best.assets.values(), mastercopiesDir);
+  writeArtifact(name, version, best.contracts.values(), mastercopiesDir);
   if (best.errors.length === 0) {
-    console.log(`  ✔ ${id}: ${best.assets.size} asset(s)`);
+    console.log(`  ✔ ${id}: ${best.contracts.size} contract(s)`);
   } else {
     console.warn(
       `  ⚠ ${id}: partial — ${[...best.errors, ...failures].join("; ")}`
@@ -70,15 +71,16 @@ async function extractMastercopy({
 }
 
 function isMoreComplete(
-  candidate: FetchedMastercopy,
-  current: FetchedMastercopy,
+  candidate: FetchedArtifact,
+  current: FetchedArtifact,
   rootAddress: string
 ): boolean {
   const rootKey = rootAddress.toLowerCase();
-  const score = (result: FetchedMastercopy): number[] => [
-    result.assets.get(rootKey)?.deployment ? 1 : 0,
-    [...result.assets.values()].filter((asset) => asset.deployment).length,
-    result.assets.size,
+  const score = (result: FetchedArtifact): number[] => [
+    result.contracts.get(rootKey)?.deployment ? 1 : 0,
+    [...result.contracts.values()].filter((contract) => contract.deployment)
+      .length,
+    result.contracts.size,
     -result.errors.length,
   ];
 

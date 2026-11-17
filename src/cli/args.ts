@@ -1,6 +1,5 @@
 import { parseArgs } from "util";
 
-import { CanonicalAddresses, KnownContracts } from "../sdk/contracts.js";
 import { NetworkConfig, resolveNetwork } from "./networks.js";
 
 const FLAGS = {
@@ -38,46 +37,4 @@ export function parseCliArgs(
     positionals,
     networks: networks && [...new Set(networks)],
   };
-}
-
-export interface Mastercopy {
-  contractName: KnownContracts;
-  version: string;
-  address: string;
-}
-
-export function resolveMastercopy(name: string, version: string): Mastercopy {
-  const contractName = resolveName(name);
-  const addresses: Record<string, string> = CanonicalAddresses[contractName];
-  const address = addresses[version];
-  if (!address) {
-    throw new Error(
-      version in addresses
-        ? `${contractName}@${version} has no canonical address on record`
-        : `Unknown version "${version}". Known versions of ${contractName}: ${
-            knownVersions(contractName).join(", ") || "(none)"
-          }`
-    );
-  }
-  return { contractName, version, address };
-}
-
-export function knownVersions(name: string): string[] {
-  const addresses: Record<string, string> =
-    CanonicalAddresses[resolveName(name)];
-  return Object.keys(addresses).filter((version) => addresses[version]);
-}
-
-function resolveName(name: string): KnownContracts {
-  const knownContracts = Object.values(KnownContracts);
-
-  const contractName = knownContracts.find(
-    (known) => known.toLowerCase() === name.toLowerCase()
-  );
-  if (!contractName) {
-    throw new Error(
-      `Unknown contract "${name}". Known contracts: ${knownContracts.join(", ")}`
-    );
-  }
-  return contractName;
 }

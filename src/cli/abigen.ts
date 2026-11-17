@@ -14,7 +14,7 @@ const identifier = (v: string) => v.replace(/[^a-zA-Z0-9_$]/g, "_");
 
 /**
  * Regenerate `src/sdk/abis` from the artifacts on disk: one module per
- * `name@version` exporting the main asset's ABI, plus an index of them all.
+ * `name@version` exporting the main contract's ABI, plus an index of them all.
  */
 export async function writeAbis({
   mastercopiesDir = defaultMastercopiesDir(),
@@ -81,10 +81,10 @@ function renderIndex(registry: Record<string, Record<string, string>>) {
   // `satisfies` keeps the literal ABI types while checking that the keys are
   // exactly the known contracts: none missing, none unknown.
   return [
-    `import { KnownContracts } from "../contracts.js";`,
+    `import { MastercopyName } from "../contracts.js";`,
     imports,
     "",
-    `export const ABIs = {\n${body}\n} as const satisfies Record<KnownContracts, Record<string, readonly unknown[]>>;`,
+    `export const ABIs = {\n${body}\n} as const satisfies Record<MastercopyName, Record<string, readonly unknown[]>>;`,
     "",
   ].join("\n");
 }
