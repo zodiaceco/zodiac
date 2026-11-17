@@ -3,10 +3,9 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "rootDir": "src",
+    "rootDir": "src/sdk",
     "outDir": "dist/esm",
     "declaration": true
   },
-  "include": ["src"],
-  "exclude": ["src/cli.ts"]
+  "include": ["src/sdk"]
 }

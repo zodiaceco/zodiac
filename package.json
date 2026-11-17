@@ -1,6 +1,6 @@
 {
   "name": "@gnosis-guild/zodiac",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "description": "Zodiac is a composable design philosophy and collection of standards for building DAO ecosystem tooling.",
   "author": "Auryn Macmillan <auryn@gnosisguild.org>",
   "license": "LGPL-3.0+",
@@ -24,33 +24,33 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "yarn clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
-    "postbuild": "node postbuild.mjs",
-    "cli": "tsx src/cli.ts",
-    "extract": "tsx src/cli.ts extract",
-    "deploy": "tsx src/cli.ts deploy",
-    "deploy:list": "tsx src/cli.ts deploy list",
-    "verify": "tsx src/cli.ts verify",
-    "verify:list": "tsx src/cli.ts verify list",
-    "format": "prettier --write ./src/**/*.ts ./commands/**/*.ts",
-    "release": "yarn build && yarn publish --access public"
+    "prebuild": "bun run abigen",
+    "build": "bun run clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
+    "postbuild": "bun postbuild.mjs",
+    "cli": "bun src/cli/main.ts",
+    "abigen": "bun src/cli/main.ts abigen",
+    "extract": "bun src/cli/main.ts extract",
+    "deploy": "bun src/cli/main.ts deploy",
+    "deploy:list": "bun src/cli/main.ts deploy list",
+    "verify": "bun src/cli/main.ts verify",
+    "verify:list": "bun src/cli/main.ts verify list",
+    "format": "prettier --write ./src/**/*.ts",
+    "release": "bun run build && npm publish --access public"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/gnosis/zodiac.git"
   },
   "devDependencies": {
+    "@types/node": "^24",
     "@types/semver": "^7.7.1",
+    "eth-provider": "^0.13.7",
     "prettier": "^3.8.4",
-    "tsx": "^4.19.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "viem": "^2.58.0"
   },
   "dependencies": {
-    "@gnosis-guild/zodiac-core": "4.3.0",
-    "dotenv": "^17.4.2",
-    "eth-provider": "^0.13.7",
-    "ethers": "^6.17.0",
     "semver": "^7.7.3"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "bun@1.4.4"
 }
