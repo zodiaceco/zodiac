@@ -1,0 +1,39 @@
+{
+  "contractName": "MultiSendUnwrapper",
+  "sourceName": "contracts/periphery/MultiSendUnwrapper.sol",
+  "compilerVersion": "v0.8.21+commit.d9974bed",
+  "constructorArguments": "",
+  "compilerInput": {
+    "language": "Solidity",
+    "sources": {
+      "@gnosis-guild/zodiac-core/contracts/core/Operation.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity >=0.7.0 <0.9.0;\n\nenum Operation {\n  Call,\n  DelegateCall\n}\n"
+      },
+      "contracts/periphery/MultiSendUnwrapper.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity >=0.8.17 <0.9.0;\n\nimport \"./Types.sol\";\n\ncontract MultiSendUnwrapper is ITransactionUnwrapper {\n    uint256 private constant OFFSET_START = 68;\n\n    error UnsupportedMode();\n    error MalformedHeader();\n    error MalformedBody();\n\n    function unwrap(\n        address,\n        uint256 value,\n        bytes calldata data,\n        Operation operation\n    ) external pure returns (UnwrappedTransaction[] memory) {\n        if (value != 0) {\n            revert UnsupportedMode();\n        }\n        if (operation != Operation.DelegateCall) {\n            revert UnsupportedMode();\n        }\n        _validateHeader(data);\n        uint256 count = _validateEntries(data);\n        return _unwrapEntries(data, count);\n    }\n\n    function _validateHeader(bytes calldata data) private pure {\n        // first 4 bytes are the selector for multiSend(bytes)\n        if (bytes4(data) != IMultiSend.multiSend.selector) {\n            revert MalformedHeader();\n        }\n\n        // the following 32 bytes are the offset to the bytes param\n        // (always 0x20)\n        if (bytes32(data[4:]) != bytes32(uint256(0x20))) {\n            revert MalformedHeader();\n        }\n\n        // the following 32 bytes are the length of the bytes param\n        uint256 length = uint256(bytes32(data[36:]));\n\n        // validate that the total calldata length matches\n        // it's the 4 + 32 + 32 bytes checked above + the <length> bytes\n        // padded to a multiple of 32\n        if (4 + _ceil32(32 + 32 + length) != data.length) {\n            revert MalformedHeader();\n        }\n    }\n\n    function _validateEntries(\n        bytes calldata data\n    ) private pure returns (uint256 count) {\n        uint256 offset = OFFSET_START;\n        uint256 end = OFFSET_START + uint256(bytes32(data[36:]));\n\n        for (; offset < end; ) {\n            // Per transaction:\n            // Operation   1  bytes\n            // To          20 bytes\n            // Value       32 bytes\n            // Length      32 bytes\n            // Data        Length bytes\n            uint8 operation = uint8(bytes1(data[offset:]));\n            if (operation > 1) {\n                revert MalformedBody();\n            }\n\n            uint256 length = uint256(bytes32(data[offset + 53:]));\n            if (offset + 85 + length > end) {\n                revert MalformedBody();\n            }\n\n            offset += 85 + length;\n            count++;\n        }\n\n        if (count == 0) {\n            revert MalformedBody();\n        }\n    }\n\n    function _unwrapEntries(\n        bytes calldata data,\n        uint256 count\n    ) private pure returns (UnwrappedTransaction[] memory result) {\n        result = new UnwrappedTransaction[](count);\n\n        uint256 offset = OFFSET_START;\n        for (uint256 i; i < count; ) {\n            result[i].operation = Operation(uint8(bytes1(data[offset:])));\n            offset += 1;\n\n            result[i].to = address(bytes20(data[offset:]));\n            offset += 20;\n\n            result[i].value = uint256(bytes32(data[offset:]));\n            offset += 32;\n\n            uint256 size = uint256(bytes32(data[offset:]));\n            offset += 32;\n\n            result[i].dataLocation = offset;\n            result[i].dataSize = size;\n            offset += size;\n\n            unchecked {\n                ++i;\n            }\n        }\n    }\n\n    function _ceil32(uint256 length) private pure returns (uint256) {\n        // pad size. Source: http://www.cs.nott.ac.uk/~psarb2/G51MPC/slides/NumberLogic.pdf\n        return ((length + 32 - 1) / 32) * 32;\n    }\n}\n"
+      },
+      "contracts/periphery/Types.sol": {
+        "content": "// SPDX-License-Identifier: LGPL-3.0-only\npragma solidity >=0.8.17 <0.9.0;\n\nimport \"@gnosis-guild/zodiac-core/contracts/core/Operation.sol\";\n\ninterface IMultiSend {\n    function multiSend(bytes memory transactions) external payable;\n}\n\nstruct UnwrappedTransaction {\n    Operation operation;\n    address to;\n    uint256 value;\n    // We wanna deal in calldata slices. We return location, let invoker slice\n    uint256 dataLocation;\n    uint256 dataSize;\n}\n\ninterface ITransactionUnwrapper {\n    function unwrap(\n        address to,\n        uint256 value,\n        bytes calldata data,\n        Operation operation\n    ) external view returns (UnwrappedTransaction[] memory result);\n}\n\ninterface ICustomCondition {\n    function check(\n        address to,\n        uint256 value,\n        bytes calldata data,\n        Operation operation,\n        uint256 location,\n        uint256 size,\n        bytes12 extra\n    ) external view returns (bool success, bytes32 reason);\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 100
+      },
+      "outputSelection": {
+        "*": {
+          "*": [
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "devdoc",
+            "userdoc",
+            "metadata",
+            "abi"
+          ]
+        }
+      }
+    }
+  }
+}
