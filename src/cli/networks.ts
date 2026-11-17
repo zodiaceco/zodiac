@@ -1,10 +1,10 @@
 /**
- * Source-of-truth network registry.
+ * RPC and explorer endpoints for every chain in `SupportedNetworks`.
  *
  * One entry per chain referenced across the Zodiac repos (the in-repo chain
  * list plus the chains served by `ser` and `rolesSubgraph`). Each entry carries:
  *
- *  - `chainId`          the canonical chain id
+ *  - `chainId`          the chain id, taken from `SupportedNetworks`
  *  - `alchemyRpcUrl`    Alchemy JSON-RPC endpoint, or null when Alchemy does
  *                       not serve the chain. The key is read from `ALCHEMY_KEY`.
  *  - `publicRpc`        public JSON-RPC endpoint, or null when no public
@@ -24,6 +24,8 @@
  * Entries are sorted by `chainId`.
  *
  */
+
+import { SupportedNetworks } from "../sdk/chains.js";
 
 const ETHERSCAN_V2_API = "https://api.etherscan.io/v2/api";
 
@@ -75,77 +77,77 @@ export interface NetworkConfig {
 export const networks: NetworkConfig[] = [
   {
     name: "mainnet",
-    chainId: 1,
+    chainId: SupportedNetworks.MAINNET,
     alchemyRpcUrl: alchemy("eth-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(1),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.MAINNET),
   },
   {
     name: "optimism",
-    chainId: 10,
+    chainId: SupportedNetworks.OPTIMISM,
     alchemyRpcUrl: alchemy("opt-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(10),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.OPTIMISM),
   },
   {
     name: "bnb",
-    chainId: 56,
+    chainId: SupportedNetworks.BNB,
     alchemyRpcUrl: alchemy("bnb-mainnet"),
     publicRpc: "https://bsc-dataseed.bnbchain.org",
-    etherscanApiUrl: etherscanV2(56),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.BNB),
   },
   {
     name: "gnosis",
-    chainId: 100,
+    chainId: SupportedNetworks.GNOSIS,
     alchemyRpcUrl: alchemy("gnosis-mainnet"),
     publicRpc: "https://rpc.gnosischain.com",
-    etherscanApiUrl: etherscanV2(100),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.GNOSIS),
   },
   {
     name: "unichain",
-    chainId: 130,
+    chainId: SupportedNetworks.UNICHAIN,
     alchemyRpcUrl: alchemy("unichain-mainnet"),
     publicRpc: "https://mainnet.unichain.org",
-    etherscanApiUrl: etherscanV2(130),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.UNICHAIN),
   },
   {
     name: "polygon",
-    chainId: 137,
+    chainId: SupportedNetworks.POLYGON,
     alchemyRpcUrl: alchemy("polygon-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(137),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.POLYGON),
   },
   {
     name: "sonic",
-    chainId: 146,
+    chainId: SupportedNetworks.SONIC,
     alchemyRpcUrl: alchemy("sonic-mainnet"),
     publicRpc: "https://rpc.soniclabs.com",
-    etherscanApiUrl: etherscanV2(146),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.SONIC),
   },
   {
     name: "worldchain",
-    chainId: 480,
+    chainId: SupportedNetworks.WORLDCHAIN,
     alchemyRpcUrl: alchemy("worldchain-mainnet"),
     publicRpc: "https://worldchain-mainnet.g.alchemy.com/public",
-    etherscanApiUrl: etherscanV2(480),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.WORLDCHAIN),
   },
   {
     name: "hyperliquid",
-    chainId: 999,
+    chainId: SupportedNetworks.HYPERLIQUID,
     alchemyRpcUrl: alchemy("hyperliquid-mainnet"),
     publicRpc: "https://rpc.hyperliquid.xyz/evm",
-    etherscanApiUrl: etherscanV2(999),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.HYPERLIQUID),
   },
   {
     name: "megaeth",
-    chainId: 4326,
+    chainId: SupportedNetworks.MEGAETH,
     alchemyRpcUrl: alchemy("megaeth-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(4326),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.MEGAETH),
   },
   {
     name: "robinhood",
-    chainId: 4663,
+    chainId: SupportedNetworks.ROBINHOOD,
     alchemyRpcUrl: alchemy("robinhood-mainnet"),
     publicRpc: "https://rpc.mainnet.chain.robinhood.com",
     // Blockscout instance (Etherscan V2 needs a paid plan here); public,
@@ -154,49 +156,49 @@ export const networks: NetworkConfig[] = [
   },
   {
     name: "mantle",
-    chainId: 5000,
+    chainId: SupportedNetworks.MANTLE,
     alchemyRpcUrl: alchemy("mantle-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(5000),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.MANTLE),
   },
   {
     name: "base",
-    chainId: 8453,
+    chainId: SupportedNetworks.BASE,
     alchemyRpcUrl: alchemy("base-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(8453),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.BASE),
   },
   {
     name: "plasma",
-    chainId: 9745,
+    chainId: SupportedNetworks.PLASMA,
     alchemyRpcUrl: alchemy("plasma-mainnet"),
     publicRpc: "https://rpc.plasma.to",
-    etherscanApiUrl: etherscanV2(9745),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.PLASMA),
   },
   {
     name: "arbitrum",
-    chainId: 42161,
+    chainId: SupportedNetworks.ARBITRUM,
     alchemyRpcUrl: alchemy("arb-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(42161),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.ARBITRUM),
   },
   {
     name: "celo",
-    chainId: 42220,
+    chainId: SupportedNetworks.CELO,
     alchemyRpcUrl: alchemy("celo-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(42220),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.CELO),
   },
   {
     name: "avalanche",
-    chainId: 43114,
+    chainId: SupportedNetworks.AVALANCHE,
     alchemyRpcUrl: alchemy("avax-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(43114),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.AVALANCHE),
   },
   {
     name: "ink",
-    chainId: 57073,
+    chainId: SupportedNetworks.INK,
     alchemyRpcUrl: alchemy("ink-mainnet"),
     publicRpc: "https://rpc-gel.inkonchain.com",
     // Blockscout instance (not on Etherscan V2); public, ignores API key.
@@ -204,14 +206,14 @@ export const networks: NetworkConfig[] = [
   },
   {
     name: "linea",
-    chainId: 59144,
+    chainId: SupportedNetworks.LINEA,
     alchemyRpcUrl: alchemy("linea-mainnet"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(59144),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.LINEA),
   },
   {
     name: "bob",
-    chainId: 60808,
+    chainId: SupportedNetworks.BOB,
     alchemyRpcUrl: alchemy("bob-mainnet"),
     publicRpc: "https://rpc.gobob.xyz",
     // Blockscout instance (not on Etherscan V2); public, ignores API key.
@@ -219,21 +221,21 @@ export const networks: NetworkConfig[] = [
   },
   {
     name: "berachain",
-    chainId: 80094,
+    chainId: SupportedNetworks.BERACHAIN,
     alchemyRpcUrl: alchemy("berachain-mainnet"),
     publicRpc: "https://rpc.berachain.com",
-    etherscanApiUrl: etherscanV2(80094),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.BERACHAIN),
   },
   {
     name: "baseSepolia",
-    chainId: 84532,
+    chainId: SupportedNetworks.BASE_SEPOLIA,
     alchemyRpcUrl: alchemy("base-sepolia"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(84532),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.BASE_SEPOLIA),
   },
   {
     name: "scroll",
-    chainId: 534352,
+    chainId: SupportedNetworks.SCROLL,
     alchemyRpcUrl: alchemy("scroll-mainnet"),
     publicRpc: null,
     // Etherscan-family explorer (not on Etherscan V2); uses ETHERSCAN_API_KEY.
@@ -241,17 +243,17 @@ export const networks: NetworkConfig[] = [
   },
   {
     name: "katana",
-    chainId: 747474,
+    chainId: SupportedNetworks.KATANA,
     alchemyRpcUrl: alchemy("katana-mainnet"),
     publicRpc: "https://rpc.katana.network",
-    etherscanApiUrl: etherscanV2(747474),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.KATANA),
   },
   {
     name: "sepolia",
-    chainId: 11155111,
+    chainId: SupportedNetworks.SEPOLIA,
     alchemyRpcUrl: alchemy("eth-sepolia"),
     publicRpc: null,
-    etherscanApiUrl: etherscanV2(11155111),
+    etherscanApiUrl: etherscanV2(SupportedNetworks.SEPOLIA),
   },
 ];
 

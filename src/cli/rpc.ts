@@ -1,9 +1,3 @@
-/**
- * Perform a raw JSON-RPC call using fetch. Used for fast, low-overhead reads
- * across many networks without initializing a full Ethers provider, and as the
- * source for `eth_*` reads that not every block explorer exposes via its
- * Etherscan-compatible `proxy` module (e.g. Blockscout).
- */
 export async function rpcCall<T = unknown>(
   rpcUrl: string,
   method: string,
@@ -39,11 +33,6 @@ export async function rpcCall<T = unknown>(
   }
 }
 
-/**
- * Perform a raw JSON-RPC eth_getCode call using fetch.
- * This is used for fast, low-overhead status checks across many networks
- * without initializing a full Ethers provider.
- */
 export async function getCode(
   rpcUrl: string,
   address: string

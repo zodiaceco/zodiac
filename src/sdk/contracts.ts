@@ -26,41 +26,9 @@ export enum KnownContracts {
   ERC20_VOTES = "erc20Votes",
   ERC721_VOTES = "erc721Votes",
   MULTISEND_ENCODER = "multisendEncoder",
+  MULTISEND_UNWRAPPER = "multiSendUnwrapper",
   CONNEXT = "connext",
 }
-
-export const SupportedNetworks = Object.freeze({
-  MAINNET: 1,
-  OPTIMISM: 10,
-  BSC: 56,
-  BNB: 56,
-  GNOSIS: 100,
-  UNICHAIN: 130,
-  POLYGON: 137,
-  SONIC: 146,
-  WORLDCHAIN: 480,
-  HYPEREVM: 999,
-  HYPERLIQUID: 999,
-  MEGAETH: 4326,
-  ROBINHOOD: 4663,
-  MANTLE: 5000,
-  BASE: 8453,
-  PLASMA: 9745,
-  ARBITRUM: 42161,
-  CELO: 42220,
-  AVALANCHE: 43114,
-  INK: 57073,
-  LINEA: 59144,
-  BOB: 60808,
-  BERACHAIN: 80094,
-  BASE_SEPOLIA: 84532,
-  SCROLL: 534352,
-  KATANA: 747474,
-  SEPOLIA: 11155111,
-} as const);
-
-export type SupportedNetworks =
-  (typeof SupportedNetworks)[keyof typeof SupportedNetworks];
 
 /** Canonical mastercopy address for each known contract, by version. */
 export const CanonicalAddresses: Record<
@@ -136,30 +104,13 @@ export const CanonicalAddresses: Record<
   [KnownContracts.MULTISEND_ENCODER]: {
     "1.0.0": "0xb67EDe523171325345780fA3016b7F5221293df0",
   },
+  [KnownContracts.MULTISEND_UNWRAPPER]: {
+    "1.0.0": "0xB4Cd4bb764C089f20DA18700CE8bc5e49F369efD",
+  },
   [KnownContracts.CONNEXT]: {
     "1.0.0": "0x7dE07b9De0bf0FABf31A188DE1527034b2aF36dB",
   },
 };
-
-/** Compare dotted numeric version strings, e.g. "1.10.0" sorts after "1.9.9". */
-function compareVersions(a: string, b: string): number {
-  const as = a.split(".").map(Number);
-  const bs = b.split(".").map(Number);
-  const length = Math.max(as.length, bs.length);
-  for (let i = 0; i < length; i += 1) {
-    const diff = (as[i] ?? 0) - (bs[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
-
-/** The highest of the given versions, by numeric semver order. */
-export function latestVersion(versions: string[]): string {
-  if (versions.length === 0) {
-    throw new Error("latestVersion requires at least one version");
-  }
-  return [...versions].sort(compareVersions)[versions.length - 1];
-}
 
 export const FAULTY: Partial<
   Record<KnownContracts, { [version: `${number}.${number}.${number}`]: string }>

@@ -3,10 +3,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
-    "rootDir": "src",
+    "rootDir": "src/sdk",
     "outDir": "dist/cjs",
     "declaration": false
   },
-  "include": ["src"],
-  "exclude": ["src/cli.ts"]
+  "include": ["src/sdk"]
 }

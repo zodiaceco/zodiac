@@ -1,3 +1,4 @@
+import { KnownContracts } from "../contracts.js";
 import { bridge_1_0_0_ABI } from "./bridge/1.0.0.js";
 import { circulatingSupplyERC20_1_0_0_ABI } from "./circulatingSupplyERC20/1.0.0.js";
 import { circulatingSupplyERC20_1_1_0_ABI } from "./circulatingSupplyERC20/1.1.0.js";
@@ -20,6 +21,7 @@ import { factory_1_0_0_ABI } from "./factory/1.0.0.js";
 import { factory_1_1_0_ABI } from "./factory/1.1.0.js";
 import { factory_1_2_0_ABI } from "./factory/1.2.0.js";
 import { metaGuard_1_0_0_ABI } from "./metaGuard/1.0.0.js";
+import { multiSendUnwrapper_1_0_0_ABI } from "./multiSendUnwrapper/1.0.0.js";
 import { multisendEncoder_1_0_0_ABI } from "./multisendEncoder/1.0.0.js";
 import { optimisticGovernor_1_2_0_ABI } from "./optimisticGovernor/1.2.0.js";
 import { ozGovernor_1_0_0_ABI } from "./ozGovernor/1.0.0.js";
@@ -77,6 +79,9 @@ export const ABIs = {
   metaGuard: {
     "1.0.0": metaGuard_1_0_0_ABI,
   },
+  multiSendUnwrapper: {
+    "1.0.0": multiSendUnwrapper_1_0_0_ABI,
+  },
   multisendEncoder: {
     "1.0.0": multisendEncoder_1_0_0_ABI,
   },
@@ -104,4 +109,4 @@ export const ABIs = {
   tellor: {
     "2.1.0": tellor_2_1_0_ABI,
   },
-} as const;
+} as const satisfies Record<KnownContracts, Record<string, readonly unknown[]>>;

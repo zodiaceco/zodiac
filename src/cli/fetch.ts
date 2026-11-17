@@ -1,62 +1,25 @@
 import { getAddress } from "ethers";
-import { predictSingletonAddress } from "@gnosis-guild/zodiac-core";
 
-import { resolveNetwork } from "./networks.js";
+import { resolveNetwork, rpcUrlFor } from "./networks.js";
 import {
-  getCode,
   getContractCreation,
   getSourceCode,
   getTransaction,
-} from "./explorer.js";
-import { recoverDeployment } from "./singleton.js";
-import { Asset, BytecodeFile } from "./types.js";
+} from "./etherscan.js";
+import { getCode } from "./rpc.js";
+import { predictAddress, recoverDeployment } from "./deployment.js";
+import { Asset, Create2Deployment } from "./artifact.js";
 
-/**
- * Enumerate the libraries a contract links, from its standard-JSON compiler
- * input. Shape: `settings.libraries = { [sourceName]: { [libName]: address } }`.
- */
-function enumerateLibraries(
-  input: any
-): { sourceName: string; libraryName: string; address: string }[] {
-  const libraries = input?.settings?.libraries || {};
-  const out: { sourceName: string; libraryName: string; address: string }[] =
-    [];
-  for (const sourceName of Object.keys(libraries)) {
-    for (const libraryName of Object.keys(libraries[sourceName] || {})) {
-      const address = libraries[sourceName][libraryName];
-      if (address) out.push({ sourceName, libraryName, address });
-    }
-  }
-  return out;
-}
-
-export interface ExtractResult {
-  /** Every asset produced, keyed by lower-cased address. */
+export interface FetchedMastercopy {
   assets: Map<string, Asset>;
-  /**
-   * What couldn't be resolved (deployment metadata, a linked library, …).
-   * Empty when the extraction is complete. When non-empty, some assets are
-   * partial: ABI + source only, no `bytecode`.
-   */
   errors: string[];
 }
 
 /**
- * Extract an asset (and, recursively, every library it links) from a block
+ * Fetch an asset (and, recursively, every library it links) from a block
  * explorer.
- *
- * Recursion is depth-first and deduplicated by address, so a library shared by
- * several contracts is fetched once.
- *
- * An asset is recorded as soon as its ABI and source are in hand. Failures in
- * later steps — deployment-metadata recovery, linked libraries — degrade the
- * result to a partial asset (reported via `errors`) instead of discarding
- * everything. Only an unverified root contract throws.
- *
- * @returns every asset produced, keyed by lower-cased address, plus the
- * errors that left any of them partial.
  */
-export async function extract({
+export async function fetchMastercopy({
   network,
   address,
   apiKey,
@@ -64,21 +27,21 @@ export async function extract({
   network: string | number;
   address: string;
   apiKey?: string;
-}): Promise<ExtractResult> {
+}): Promise<FetchedMastercopy | undefined> {
   const net = resolveNetwork(network);
   const visited = new Map<string, Asset>();
   const errors: string[] = [];
-  await extractOne({
+  const root = await fetchAsset({
     address,
     networkName: net.name,
     apiKey,
     visited,
     errors,
   });
-  return { assets: visited, errors };
+  return root && { assets: visited, errors };
 }
 
-async function extractOne({
+async function fetchAsset({
   address,
   nameHint,
   networkName,
@@ -92,12 +55,13 @@ async function extractOne({
   apiKey?: string;
   visited: Map<string, Asset>;
   errors: string[];
-}): Promise<Asset> {
+}): Promise<Asset | undefined> {
   const key = getAddress(address).toLowerCase();
   const existing = visited.get(key);
   if (existing) return existing;
 
   const source = await getSourceCode({ address, network: networkName, apiKey });
+  if (!source) return undefined;
   const name = nameHint || source.contractName;
 
   // Record the asset as soon as ABI and source are in hand — before recursing,
@@ -105,6 +69,7 @@ async function extractOne({
   // failure there yields a partial asset rather than losing the ABI.
   const asset: Asset = {
     name,
+    address: getAddress(address),
     abi: source.abi,
     sourceCode: {
       contractName: source.contractName,
@@ -117,7 +82,7 @@ async function extractOne({
   visited.set(key, asset);
 
   try {
-    asset.bytecode = await recoverBytecodeFile({
+    asset.deployment = await recoverCreate2Deployment({
       address,
       key,
       name,
@@ -131,7 +96,7 @@ async function extractOne({
   // Recurse into linked libraries.
   for (const lib of enumerateLibraries(source.compilerInput)) {
     try {
-      await extractOne({
+      const library = await fetchAsset({
         address: lib.address,
         nameHint: lib.libraryName,
         networkName,
@@ -139,6 +104,11 @@ async function extractOne({
         visited,
         errors,
       });
+      if (!library) {
+        errors.push(
+          `${lib.libraryName} @ ${lib.address}: not verified on ${networkName}`
+        );
+      }
     } catch (error) {
       errors.push(
         `${lib.libraryName} @ ${lib.address}: ${
@@ -152,7 +122,7 @@ async function extractOne({
 }
 
 /** Recover the reproducible factory-deployment metadata for an address. */
-async function recoverBytecodeFile({
+async function recoverCreate2Deployment({
   address,
   key,
   name,
@@ -164,7 +134,7 @@ async function recoverBytecodeFile({
   name: string;
   networkName: string;
   apiKey?: string;
-}): Promise<BytecodeFile> {
+}): Promise<Create2Deployment> {
   const creation = await getContractCreation({
     address,
     network: networkName,
@@ -183,19 +153,10 @@ async function recoverBytecodeFile({
     );
   }
 
-  const { factory, initCode: creationBytecode, salt } = recovered;
+  const { factory, creationBytecode, salt } = recovered;
 
-  // Sanity: the recovered creation bytecode must reproduce the on-chain address
-  // via CREATE2. By construction it always does — a failure means a parsing bug.
-  // zodiac-core's helper concatenates bytecode + encoded constructor args; we
-  // already hold the full creation bytecode, so pass it as `bytecode` with empty
-  // args (the concat is then a no-op).
-  const predicted = predictSingletonAddress({
-    factory,
-    bytecode: creationBytecode,
-    constructorArgs: { types: [], values: [] },
-    salt,
-  });
+  // Sanity Check
+  const predicted = predictAddress({ factory, salt, creationBytecode });
   if (predicted.toLowerCase() !== key) {
     throw new Error(
       `${name} @ ${address}: recovered creation bytecode reproduces ` +
@@ -203,8 +164,10 @@ async function recoverBytecodeFile({
     );
   }
 
-  // Deployed (runtime) bytecode actually stored at the address.
-  const bytecode = await getCode({ address, network: networkName });
+  const bytecode = await getCode(
+    rpcUrlFor(resolveNetwork(networkName)),
+    address
+  );
 
   return {
     address: predicted,
@@ -213,4 +176,23 @@ async function recoverBytecodeFile({
     creationBytecode,
     bytecode,
   };
+}
+
+/**
+ * The libraries linked in `settings.libraries` of a compiler input.
+ * Shape: `settings.libraries = { [sourceName]: { [libName]: address } }`.
+ * */
+function enumerateLibraries(
+  input: any
+): { sourceName: string; libraryName: string; address: string }[] {
+  const libraries = input?.settings?.libraries || {};
+  const out: { sourceName: string; libraryName: string; address: string }[] =
+    [];
+  for (const sourceName of Object.keys(libraries)) {
+    for (const libraryName of Object.keys(libraries[sourceName] || {})) {
+      const address = libraries[sourceName][libraryName];
+      if (address) out.push({ sourceName, libraryName, address });
+    }
+  }
+  return out;
 }

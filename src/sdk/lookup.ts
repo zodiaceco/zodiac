@@ -10,13 +10,7 @@ export function getZodiacModuleAbi(
   name: KnownContracts,
   versionRange = "*"
 ): readonly unknown[] {
-  const versions = (ABIs as Partial<Record<KnownContracts, VersionedAbis>>)[
-    name
-  ];
-
-  if (!versions) {
-    throw new Error(`No ABI registry for ${name}`);
-  }
+  const versions: VersionedAbis = ABIs[name];
 
   const version = matchingVersion(versions, versionRange);
 
@@ -60,7 +54,7 @@ export function getZodiacModuleAddress(
   return versions[version];
 }
 
-export function sanityCheckZodiacModuleAddress(address: string): void {
+function sanityCheckZodiacModuleAddress(address: string): void {
   const normalizedAddress = address.toLowerCase();
   const canonicalAddresses = flattenAddresses(CanonicalAddresses);
   const faultyAddresses = flattenAddresses(FAULTY);

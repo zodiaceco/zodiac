@@ -10,5 +10,5 @@
     "target": "esnext",
     "typeRoots": ["node_modules/@types", "typings"]
   },
-  "include": ["src", "commands"]
+  "include": ["src"]
 }
