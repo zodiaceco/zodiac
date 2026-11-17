@@ -1,10 +1,12 @@
 #!/usr/bin/env bun
+import * as abigen from "./commands/abigen.js";
 import * as deploy from "./commands/deploy.js";
 import * as extract from "./commands/extract.js";
 import * as verify from "./commands/verify.js";
 
 /** Every verb the CLI accepts. Each command module exports `run(argv)`. */
 const COMMANDS: Record<string, { run(args: string[]): Promise<void> }> = {
+  abigen,
   deploy,
   extract,
   verify,
@@ -13,6 +15,10 @@ const COMMANDS: Record<string, { run(args: string[]): Promise<void> }> = {
 const USAGE = `zodiac — mastercopy artifact tooling
 
 Usage:
+  zodiac abigen
+      Regenerate the SDK's ABI exports (src/sdk/abis) from the artifacts in
+      mastercopies/. Runs before every build.
+
   zodiac deploy <name> <version> [--network a,b]
       Deploy the missing contracts of one version's local artifact across
       configured networks.

@@ -6,7 +6,16 @@ import {
   defaultMastercopiesDir,
   listArtifacts,
   readArtifact,
-} from "./artifact.js";
+} from "../artifact.js";
+import { parseCliArgs } from "../args.js";
+
+export async function run(args: string[]): Promise<void> {
+  const { positionals } = parseCliArgs(args, []);
+  if (positionals.length > 0) throw new Error("Usage: zodiac abigen");
+
+  const count = await writeAbis();
+  console.log(`  ✔ ${count} ABI export(s) written to ${DEFAULT_ABIS_DIR}`);
+}
 
 const DEFAULT_ABIS_DIR = path.join("src", "sdk", "abis");
 
@@ -16,14 +25,16 @@ const identifier = (v: string) => v.replace(/[^a-zA-Z0-9_$]/g, "_");
  * Regenerate `src/sdk/abis` from the artifacts on disk: one module per
  * `name@version` exporting the main contract's ABI, plus an index of them all.
  */
-export async function writeAbis({
+async function writeAbis({
   mastercopiesDir = defaultMastercopiesDir(),
   abisDir = DEFAULT_ABIS_DIR,
 }: {
   mastercopiesDir?: string;
   abisDir?: string;
-} = {}): Promise<void> {
-  if (!existsSync(mastercopiesDir)) return;
+} = {}): Promise<number> {
+  if (!existsSync(mastercopiesDir)) {
+    throw new Error(`no mastercopies folder at ${mastercopiesDir}`);
+  }
 
   // Load everything before removing anything, so a bad artifact leaves the
   // existing exports alone.
@@ -57,6 +68,8 @@ export async function writeAbis({
     filepath: indexPath,
   });
   writeFileSync(indexPath, index);
+
+  return abis.length;
 }
 
 function renderIndex(registry: Record<string, Record<string, string>>) {

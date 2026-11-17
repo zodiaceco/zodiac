@@ -2,7 +2,6 @@ import { parseCliArgs } from "../args.js";
 import { resolveMastercopy, Mastercopy } from "../mastercopy.js";
 import { defaultMastercopiesDir, writeArtifact } from "../artifact.js";
 import { fetchArtifact, FetchedArtifact } from "../fetch.js";
-import { writeAbis } from "../abigen.js";
 
 export async function run(args: string[]): Promise<void> {
   const { positionals } = parseCliArgs(args, []);
@@ -11,14 +10,11 @@ export async function run(args: string[]): Promise<void> {
     throw new Error("Usage: zodiac extract <name> <version> [network]");
   }
 
-  const mastercopiesDir = defaultMastercopiesDir();
   await extractMastercopy({
     mastercopy: resolveMastercopy(name, version),
     networks: network ? [network] : DEFAULT_NETWORKS,
-    mastercopiesDir,
+    mastercopiesDir: defaultMastercopiesDir(),
   });
-  await writeAbis({ mastercopiesDir });
-  console.log("  ✔ ABI exports updated");
 }
 
 const DEFAULT_NETWORKS = ["mainnet", "gnosis", "arbitrum", "optimism", "base"];

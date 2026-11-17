@@ -24,9 +24,11 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
+    "prebuild": "bun run abigen",
     "build": "bun run clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
     "postbuild": "bun postbuild.mjs",
     "cli": "bun src/cli/main.ts",
+    "abigen": "bun src/cli/main.ts abigen",
     "extract": "bun src/cli/main.ts extract",
     "deploy": "bun src/cli/main.ts deploy",
     "deploy:list": "bun src/cli/main.ts deploy list",
