@@ -1,5 +1,7 @@
-import { resolveNetwork, rpcUrlFor } from "./networks.js";
-import { rpcCall } from "./rpc.js";
+import type { Address, Hex } from "viem";
+
+import { resolveNetwork } from "./networks.js";
+import { publicClient } from "./rpc.js";
 
 interface SourceCode {
   contractName: string;
@@ -114,13 +116,12 @@ export async function getTransaction({
 }: {
   txHash: string;
   network: string | number;
-}): Promise<{ to: string | null; input: string } | undefined> {
-  const rpcUrl = rpcUrlFor(resolveNetwork(network));
-  const result = await rpcCall<{ to?: string | null; input?: string } | null>(
-    rpcUrl,
-    "eth_getTransactionByHash",
-    [txHash]
-  );
+}): Promise<{ to: Address | null; input: Hex } | undefined> {
+  // The raw request: viem's `getTransaction` throws when there is none.
+  const result = await publicClient(resolveNetwork(network)).request({
+    method: "eth_getTransactionByHash",
+    params: [txHash as Hex],
+  });
 
   if (!result?.input) return undefined;
   return { to: result.to ?? null, input: result.input };

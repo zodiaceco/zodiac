@@ -1,29 +1,40 @@
 import {
-  Interface,
-  dataSlice,
-  getAddress,
-  getCreate2Address,
-  hexlify,
-  keccak256,
-} from "ethers";
+  type Address,
+  type Hex,
+  concat,
+  decodeFunctionData,
+  encodeFunctionData,
+  getContractAddress,
+  isAddressEqual,
+  isHex,
+  parseAbi,
+  slice,
+} from "viem";
 
 /**
  * Known CREATE2 singleton factories used across the Zodiac ecosystem. Both
  * yield identical addresses on every chain, which is what makes mastercopy
  * replication address-stable.
  */
-export const ERC2470_FACTORY = "0xce0042B868300000d44A59004Da54A005ffdcf9f";
-const NICK_FACTORY = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
+export const ERC2470_FACTORY: Address =
+  "0xce0042B868300000d44A59004Da54A005ffdcf9f";
+const NICK_FACTORY: Address = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
 
-const erc2470Interface = new Interface([
+const erc2470Abi = parseAbi([
   "function deploy(bytes _initCode, bytes32 _salt) returns (address)",
 ]);
 
 /** What a CREATE2 deployment is made from, before its outcome is known. */
 interface Create2Params {
-  factory: string;
-  salt: string;
-  initCode: string;
+  factory: Address;
+  salt: Hex;
+  initCode: Hex;
+}
+
+function validateSalt(salt: Hex): void {
+  if (!isHex(salt) || salt.length !== 66) {
+    throw new Error(`CREATE2 salt must be 32 bytes, got ${salt}`);
+  }
 }
 
 /**
@@ -38,32 +49,27 @@ export function decodeFactoryCall({
   to,
   input,
 }: {
-  to: string | null;
-  input: string;
+  to: Address | null;
+  input: Hex;
 }): Create2Params | undefined {
-  const factory = to ? getAddress(to) : null;
-
-  if (factory === getAddress(ERC2470_FACTORY)) {
+  if (to && isAddressEqual(to, ERC2470_FACTORY)) {
     try {
-      const [initCode, salt] = erc2470Interface.decodeFunctionData(
-        "deploy",
-        input
-      );
-      return {
-        factory: ERC2470_FACTORY,
-        initCode: hexlify(initCode),
-        salt,
-      };
+      const {
+        args: [initCode, salt],
+      } = decodeFunctionData({ abi: erc2470Abi, data: input });
+      return { factory: ERC2470_FACTORY, initCode, salt };
     } catch {
       return undefined;
     }
   }
 
-  if (factory === getAddress(NICK_FACTORY)) {
+  if (to && isAddressEqual(to, NICK_FACTORY)) {
     // Nick's factory: calldata is salt (32 bytes) followed by the init code.
-    const salt = dataSlice(input, 0, 32);
-    const initCode = dataSlice(input, 32);
-    return { factory: NICK_FACTORY, initCode, salt };
+    return {
+      factory: NICK_FACTORY,
+      salt: slice(input, 0, 32),
+      initCode: slice(input, 32),
+    };
   }
 
   return undefined;
@@ -77,12 +83,17 @@ export function encodeFactoryCall({
   factory,
   salt,
   initCode,
-}: Create2Params): string {
-  if (getAddress(factory) === getAddress(ERC2470_FACTORY)) {
-    return erc2470Interface.encodeFunctionData("deploy", [initCode, salt]);
+}: Create2Params): Hex {
+  validateSalt(salt);
+  if (isAddressEqual(factory, ERC2470_FACTORY)) {
+    return encodeFunctionData({
+      abi: erc2470Abi,
+      functionName: "deploy",
+      args: [initCode, salt],
+    });
   }
-  if (getAddress(factory) === getAddress(NICK_FACTORY)) {
-    return `${salt}${initCode.slice(2)}`;
+  if (isAddressEqual(factory, NICK_FACTORY)) {
+    return concat([salt, initCode]);
   }
   throw new Error(`unsupported singleton factory ${factory}`);
 }
@@ -92,6 +103,12 @@ export function predictAddress({
   factory,
   salt,
   initCode,
-}: Create2Params): string {
-  return getCreate2Address(factory, salt, keccak256(initCode));
+}: Create2Params): Address {
+  validateSalt(salt);
+  return getContractAddress({
+    opcode: "CREATE2",
+    from: factory,
+    salt,
+    bytecode: initCode,
+  });
 }

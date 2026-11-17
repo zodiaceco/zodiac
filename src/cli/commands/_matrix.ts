@@ -54,8 +54,11 @@ const SYMBOLS: Record<Status, string> = {
 // One column wide on screen, despite the escape codes.
 const SYMBOL_WIDTH = 1;
 
+// viem errors carry a one-line `shortMessage`; their `message` is a full report.
 const errorMessage = (error: unknown): string =>
-  (error as Error)?.message || String(error);
+  (error as { shortMessage?: string })?.shortMessage ||
+  (error as Error)?.message ||
+  String(error);
 
 async function runMatrix(
   task: MatrixTask,

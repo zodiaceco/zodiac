@@ -1,10 +1,20 @@
 import {
-  BrowserProvider,
-  type Eip1193Provider,
-  JsonRpcProvider,
-  type Signer,
-  Wallet,
-} from "ethers";
+  type Account,
+  type Address,
+  type Chain,
+  type EIP1193Provider,
+  type Hex,
+  type PublicClient,
+  type Transport,
+  type WalletClient,
+  InsufficientFundsError,
+  createPublicClient,
+  createWalletClient,
+  custom,
+  getAddress,
+  http,
+} from "viem";
+import { mnemonicToAccount } from "viem/accounts";
 import ethProviderImport from "eth-provider";
 
 import {
@@ -14,14 +24,14 @@ import {
 } from "../artifact.js";
 import { MatrixTask, runMatrixCommand } from "./_matrix.js";
 import { NetworkConfig, rpcUrlFor } from "../networks.js";
-import { getCode } from "../rpc.js";
+import { chainFor, getCode, readCode } from "../rpc.js";
 import { ERC2470_FACTORY, encodeFactoryCall } from "../create2.js";
 
 export async function run(args: string[]): Promise<void> {
   await runMatrixCommand("deploy", deploy, args);
 }
 
-type FrameProvider = Eip1193Provider & {
+type FrameProvider = EIP1193Provider & {
   setChain: (chainId: string | number) => void;
   close: () => void;
 };
@@ -34,6 +44,8 @@ const connectProvider = ethProviderImport as unknown as (
 const useFrame = ["1", "true", "yes", "on"].includes(
   (process.env.DEPLOY_VIA_FRAME ?? "").toLowerCase()
 );
+
+type Signer = WalletClient<Transport, Chain, Account>;
 
 const deploy: MatrixTask = {
   legend: {
@@ -50,11 +62,10 @@ const deploy: MatrixTask = {
       ? [...artifact.libraries, artifact.main].map(
           (contract) => contract.address
         )
-      : [mastercopy.address];
+      : [getAddress(mastercopy.address)];
 
-    const rpcUrl = rpcUrlFor(network);
     for (const address of addresses) {
-      if ((await getCode(rpcUrl, address)) === "0x") return "pending";
+      if ((await getCode(network, address)) === "0x") return "pending";
     }
     return "done";
   },
@@ -63,15 +74,17 @@ const deploy: MatrixTask = {
     const artifact = readArtifact(mastercopy.name, mastercopy.version);
     if (!artifact) throw new Error("no local artifact");
 
-    const provider = new JsonRpcProvider(rpcUrlFor(network), network.chainId, {
-      staticNetwork: true,
+    const chain = chainFor(network);
+    const client = createPublicClient({
+      chain,
+      transport: http(rpcUrlFor(network)),
     });
     let disposeSigner: (() => void) | undefined;
     try {
       const missing: (ArtifactContract & { deployment: Create2Deployment })[] =
         [];
       for (const contract of [...artifact.libraries, artifact.main]) {
-        if ((await provider.getCode(contract.address)) !== "0x") continue;
+        if (await hasCode(client, contract.address)) continue;
         const { deployment } = contract;
         if (!deployment) {
           throw new Error(
@@ -82,11 +95,11 @@ const deploy: MatrixTask = {
       }
       if (missing.length === 0) return;
 
-      const { signer, dispose } = await createSigner(network, provider);
+      const { signer, dispose } = await createSigner(chain);
       disposeSigner = dispose;
       for (const contract of missing) {
         await deployContract(
-          provider,
+          client,
           signer,
           contract.name,
           contract.deployment
@@ -100,46 +113,42 @@ const deploy: MatrixTask = {
       );
     } finally {
       disposeSigner?.();
-      provider.destroy();
     }
   },
 };
 
 async function deployContract(
-  provider: JsonRpcProvider,
+  client: PublicClient,
   signer: Signer,
   name: string,
   deployment: Create2Deployment
 ): Promise<void> {
-  if ((await provider.getCode(deployment.factory)) === "0x") {
+  if (!(await hasCode(client, deployment.factory))) {
     throw new Error(`factory ${deployment.factory} is not deployed`);
   }
 
   const data = encodeFactoryCall(deployment);
-  const tx = await signer.sendTransaction({
+  const hash = await signer.sendTransaction({
     to: deployment.factory,
     data,
-    gasLimit: await deploymentGasLimit(provider, deployment, data),
+    gas: await deploymentGasLimit(client, deployment, data),
   });
-  const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) {
-    throw new Error(`deployment transaction failed: ${tx.hash}`);
+  const receipt = await client.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`deployment transaction failed: ${hash}`);
   }
 
-  if (!(await waitForCode(provider, deployment.address))) {
-    throw new Error(`${name} deployment produced no code: ${tx.hash}`);
+  if (!(await waitForCode(client, deployment.address))) {
+    throw new Error(`${name} deployment produced no code: ${hash}`);
   }
 }
 
 async function deploymentGasLimit(
-  provider: JsonRpcProvider,
+  client: PublicClient,
   deployment: Create2Deployment,
-  data: string
+  data: Hex
 ): Promise<bigint> {
-  const outerGas = await provider.estimateGas({
-    to: deployment.factory,
-    data,
-  });
+  const outerGas = await client.estimateGas({ to: deployment.factory, data });
 
   if (deployment.factory.toLowerCase() !== ERC2470_FACTORY.toLowerCase()) {
     return outerGas;
@@ -147,71 +156,91 @@ async function deploymentGasLimit(
 
   // Some RPCs underestimate ERC-2470 deploys: the factory call succeeds even
   // when the inner CREATE2 runs out of gas. Add the inner estimate on top.
-  const innerGas = await provider.estimateGas({
-    data: deployment.initCode,
-  });
+  const innerGas = await client.estimateGas({ data: deployment.initCode });
   return outerGas + innerGas;
 }
 
+async function hasCode(
+  client: PublicClient,
+  address: Address
+): Promise<boolean> {
+  return (await readCode(client, address)) !== "0x";
+}
+
 async function waitForCode(
-  provider: JsonRpcProvider,
-  address: string
+  client: PublicClient,
+  address: Address
 ): Promise<boolean> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const code = await provider.getCode(address);
-    if (code !== "0x") return true;
+    if (await hasCode(client, address)) return true;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
   return false;
 }
 
+// viem errors carry a one-line `shortMessage`; their `message` is a full report.
 function errorMessage(error: unknown): string {
-  return (error as Error)?.message || String(error);
+  return (
+    (error as { shortMessage?: string })?.shortMessage ||
+    (error as Error)?.message ||
+    String(error)
+  );
 }
 
 function isInsufficientFundsError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
+  if (error instanceof InsufficientFundsError) return true;
 
   const maybeError = error as {
-    code?: unknown;
     message?: unknown;
     shortMessage?: unknown;
+    details?: unknown;
     cause?: unknown;
-    error?: unknown;
   };
   const message = `${maybeError.message ?? ""} ${
     maybeError.shortMessage ?? ""
-  }`.toLowerCase();
+  } ${maybeError.details ?? ""}`.toLowerCase();
 
   return (
-    maybeError.code === "INSUFFICIENT_FUNDS" ||
     message.includes("insufficient funds") ||
     message.includes("not enough funds") ||
-    isInsufficientFundsError(maybeError.cause) ||
-    isInsufficientFundsError(maybeError.error)
+    isInsufficientFundsError(maybeError.cause)
   );
 }
 
 async function createSigner(
-  network: NetworkConfig,
-  provider: JsonRpcProvider
+  chain: Chain
 ): Promise<{ signer: Signer; dispose?: () => void }> {
   if (useFrame) {
     try {
       const frame = connectProvider("frame");
-      frame.setChain(network.chainId);
-      const browserProvider = new BrowserProvider(frame, network.chainId);
-      const signer = await browserProvider.getSigner();
-      return { signer, dispose: () => frame.close() };
+      frame.setChain(chain.id);
+      const transport = custom(frame);
+      const [account] = await createWalletClient({
+        chain,
+        transport,
+      }).requestAddresses();
+      if (!account) throw new Error("no account selected");
+      return {
+        signer: createWalletClient({ account, chain, transport }),
+        dispose: () => frame.close(),
+      };
     } catch (error) {
       throw new Error(`Frame unavailable: ${errorMessage(error)}`);
     }
   }
 
   if (!process.env.MNEMONIC) throw new Error("missing MNEMONIC");
-  try {
-    return { signer: Wallet.fromPhrase(process.env.MNEMONIC, provider) };
-  } catch {
-    throw new Error("couldn't create signer");
-  }
+  // viem derives the account from the exact string, so normalize it first.
+  const mnemonic = process.env.MNEMONIC.trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .join(" ");
+  return {
+    signer: createWalletClient({
+      account: mnemonicToAccount(mnemonic),
+      chain,
+      transport: http(chain.rpcUrls.default.http[0]),
+    }),
+  };
 }

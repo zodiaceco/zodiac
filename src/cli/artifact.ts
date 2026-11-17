@@ -10,7 +10,7 @@ import {
 import path from "path";
 import { cwd } from "process";
 
-import { getAddress } from "ethers";
+import { type Address, type Hex, getAddress } from "viem";
 
 import { predictAddress } from "./create2.js";
 import { canonicalAddress } from "./mastercopy.js";
@@ -45,29 +45,29 @@ export interface VerifiedSource {
  */
 export interface Create2Deployment {
   /** CREATE2 address. Reproduces on every chain from factory + salt + initCode. */
-  address: string;
+  address: Address;
   /** CREATE2 singleton factory the init code was relayed through. */
-  factory: string;
+  factory: Address;
   /** Salt recovered from the singleton-factory deployment transaction. */
-  salt: string;
+  salt: Hex;
   /**
    * The exact init code (creation code + abi-encoded constructor args, with
    * any libraries linked). Relay this, with the same factory + salt, to
    * redeploy at `address` on any other network.
    */
-  initCode: string;
+  initCode: Hex;
   /**
    * Runtime code stored at `address` (`eth_getCode`). Not used to deploy —
    * it's the on-chain identity, for comparison/verification.
    */
-  runtimeCode: string;
+  runtimeCode: Hex;
 }
 
 /** One contract of an artifact: one folder, three files. */
 export interface ArtifactContract {
   /** Folder name: the main contract name or a linked-library name. */
   name: string;
-  address: string;
+  address: Address;
   abi: any;
   source: VerifiedSource;
   /**

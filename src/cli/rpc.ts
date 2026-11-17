@@ -1,48 +1,56 @@
-export async function rpcCall<T = unknown>(
-  rpcUrl: string,
-  method: string,
-  params: unknown[]
-): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5_000);
+import {
+  type Address,
+  type Chain,
+  type Hex,
+  type PublicClient,
+  createPublicClient,
+  defineChain,
+  http,
+  isHex,
+} from "viem";
 
-  try {
-    const response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-      signal: controller.signal,
-    });
+import { NetworkConfig, rpcUrlFor } from "./networks.js";
 
-    if (!response.ok) {
-      throw new Error(`RPC returned HTTP ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      result?: unknown;
-      error?: { message?: string } | unknown;
-    };
-    if (payload.error) {
-      const message =
-        (payload.error as { message?: string })?.message ?? "unknown error";
-      throw new Error(`RPC ${method} failed: ${message}`);
-    }
-    return payload.result as T;
-  } finally {
-    clearTimeout(timeout);
-  }
+/** A viem chain for a configured network, pointing at its resolved RPC. */
+export function chainFor(network: NetworkConfig): Chain {
+  return defineChain({
+    id: network.chainId,
+    name: network.name,
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrlFor(network)] } },
+  });
 }
 
+/** A read client that fails fast: status checks fan out over every network. */
+export function publicClient(network: NetworkConfig): PublicClient {
+  return createPublicClient({
+    chain: chainFor(network),
+    transport: http(rpcUrlFor(network), { timeout: 5_000, retryCount: 0 }),
+  });
+}
+
+/** The code at `address`, or `"0x"` when there is none. */
 export async function getCode(
-  rpcUrl: string,
-  address: string
-): Promise<string> {
-  const result = await rpcCall<unknown>(rpcUrl, "eth_getCode", [
-    address,
-    "latest",
-  ]);
-  if (typeof result !== "string") {
+  network: NetworkConfig,
+  address: Address
+): Promise<Hex> {
+  return readCode(publicClient(network), address);
+}
+
+/**
+ * `eth_getCode` through `client`, with the response checked: viem hands back
+ * whatever the node sent, and a malformed answer must not read as "has code".
+ */
+export async function readCode(
+  client: PublicClient,
+  address: Address
+): Promise<Hex> {
+  const code: unknown = await client.request({
+    method: "eth_getCode",
+    params: [address, "latest"],
+  });
+  if (!isHex(code) || code.length % 2 !== 0) {
     throw new Error("RPC returned an invalid eth_getCode response");
   }
-  return result;
+  return code;
 }

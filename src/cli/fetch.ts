@@ -1,6 +1,6 @@
-import { getAddress } from "ethers";
+import { type Address, getAddress } from "viem";
 
-import { resolveNetwork, rpcUrlFor } from "./networks.js";
+import { resolveNetwork } from "./networks.js";
 import {
   getContractCreation,
   getSourceCode,
@@ -83,7 +83,7 @@ async function fetchContract({
 
   try {
     contract.deployment = await recoverCreate2Deployment({
-      address,
+      address: contract.address,
       key,
       name,
       networkName,
@@ -129,7 +129,7 @@ async function recoverCreate2Deployment({
   networkName,
   apiKey,
 }: {
-  address: string;
+  address: Address;
   key: string;
   name: string;
   networkName: string;
@@ -164,10 +164,7 @@ async function recoverCreate2Deployment({
     );
   }
 
-  const runtimeCode = await getCode(
-    rpcUrlFor(resolveNetwork(networkName)),
-    address
-  );
+  const runtimeCode = await getCode(resolveNetwork(networkName), address);
 
   return {
     address: predicted,

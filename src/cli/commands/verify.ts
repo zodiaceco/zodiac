@@ -6,7 +6,7 @@ import {
 } from "../etherscan.js";
 import { getCode } from "../rpc.js";
 import { MatrixTask, runMatrixCommand } from "./_matrix.js";
-import { NetworkConfig, rpcUrlFor } from "../networks.js";
+import { NetworkConfig } from "../networks.js";
 import { Mastercopy } from "../mastercopy.js";
 
 export async function run(args: string[]): Promise<void> {
@@ -39,7 +39,7 @@ const verify: MatrixTask = {
     for (const contract of verifiableContracts(mastercopy, network)) {
       if (await isVerified(contract, network)) continue;
 
-      const code = await getCode(rpcUrlFor(network), contract.address);
+      const code = await getCode(network, contract.address);
       if (code === "0x") throw new Error(`${contract.name}: not deployed`);
 
       await submitAndWaitForVerification(network, contract);
