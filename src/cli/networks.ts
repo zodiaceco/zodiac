@@ -13,13 +13,19 @@
  *                       Most chains use the Etherscan V2 multichain endpoint
  *                       (with `?chainid=`); chains not on Etherscan V2 get a
  *                       chain-specific Etherscan-compatible explorer instead —
- *                       a Blockscout instance (ink, bob, robinhood) or another
+ *                       a Blockscout instance (ink, robinhood) or another
  *                       Etherscan-family explorer (scrollscan).
  *                       Etherscan V2 support was checked against
  *                       api.etherscan.io/v2/chainlist. The endpoint serves both
  *                       reads and contract verification; `eth_*` calls go to the
  *                       JSON-RPC URL instead (see `rpcUrlFor`), as Blockscout
  *                       has no Etherscan `proxy` module.
+ *                       A chain with none (bob) can still be verified, on
+ *                       Sourcify, but not extracted from: Sourcify is not asked
+ *                       for sources or creation transactions.
+ *
+ * Sourcify is not configured here: `verify` also submits to it on every chain
+ * the Sourcify server reports as supported (see `sourcify.ts`).
  *
  * Entries are sorted by `chainId`.
  *
@@ -33,12 +39,11 @@ const alchemyKey =
   typeof process !== "undefined" ? (process.env.ALCHEMY_KEY ?? "") : "";
 
 const ETHERSCAN_V2_CHAIN_IDS = new Set([
-  1, 10, 50, 51, 56, 97, 100, 130, 137, 143, 146, 199, 204, 252, 480, 988, 999,
-  1029, 1284, 1285, 1287, 1301, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 4663,
-  4801, 5000, 5003, 5611, 6343, 8453, 9745, 9746, 10143, 11124, 14601, 33111,
-  33139, 42161, 42220, 43113, 43114, 43522, 59141, 59144, 80002, 80069, 80094,
-  81457, 84532, 167000, 167013, 421614, 560048, 737373, 747474, 11142220,
-  11155111, 11155420, 168587773,
+  1, 10, 50, 51, 56, 97, 100, 130, 137, 143, 146, 199, 252, 480, 988, 999, 1029,
+  1301, 1328, 1329, 2201, 2523, 2741, 4326, 4352, 4663, 4801, 5000, 5003, 5042,
+  6343, 8453, 9745, 9746, 10143, 14601, 42161, 42220, 43114, 43522, 59141,
+  59144, 80002, 80069, 80094, 84532, 167000, 167013, 421614, 560048, 737373,
+  747474, 11142220, 11155111, 11155420,
 ]);
 
 /** Build an Alchemy RPC URL from its endpoint subdomain. */
@@ -72,7 +77,7 @@ export interface NetworkConfig {
   alchemyRpcUrl: string | null;
   /** Public JSON-RPC endpoint, or null when no fallback is configured. */
   publicRpc: string | null;
-  /** Etherscan V2 multichain API URL, or null when V2 does not support it. */
+  /** Etherscan-compatible explorer API URL, or null when there is none. */
   etherscanApiUrl: string | null;
 }
 
@@ -218,8 +223,9 @@ export const networks: NetworkConfig[] = [
     chainId: SupportedNetworks.BOB,
     alchemyRpcUrl: alchemy("bob-mainnet"),
     publicRpc: "https://rpc.gobob.xyz",
-    // Blockscout instance (not on Etherscan V2); public, ignores API key.
-    etherscanApiUrl: "https://explorer.gobob.xyz/api",
+    // Not on Etherscan V2, and explorer.gobob.xyz has no Etherscan-compatible
+    // API: it shows the sources verified on Sourcify.
+    etherscanApiUrl: null,
   },
   {
     name: "berachain",

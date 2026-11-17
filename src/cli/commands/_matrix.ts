@@ -176,7 +176,8 @@ function clearTransient(): void {
   clearLine(process.stderr, 0);
 }
 
-function printLine(message: string): void {
+/** Print a line that stays, above the transient progress line. */
+export function printLine(message: string): void {
   clearTransient();
   console.log(message);
 }

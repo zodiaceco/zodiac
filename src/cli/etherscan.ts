@@ -1,5 +1,6 @@
 import type { Address, Hex } from "viem";
 
+import { requestJson, sleep } from "./http.js";
 import { resolveNetwork } from "./networks.js";
 import { publicClient } from "./rpc.js";
 
@@ -225,7 +226,7 @@ async function explorerRequest<T = any>(
   const network = resolveNetwork(networkOrChainId);
   if (!network.etherscanApiUrl) {
     throw new Error(
-      `${network.name} (chain ${network.chainId}) has no supported explorer.`
+      `${network.name} (chain ${network.chainId}) has no Etherscan-compatible explorer.`
     );
   }
 
@@ -238,46 +239,17 @@ async function explorerRequest<T = any>(
   }
   if (method === "GET") url.search = query.toString();
 
-  await queueRequest();
-  const { status, body } = await send<T>(
+  const { status, body } = await requestJson<ExplorerResponse<T>>(
     url,
-    method === "GET" ? {} : { method, body: query }
+    method === "GET" ? {} : { method, body: query },
+    { beforeAttempt: queueRequest, isRateLimited }
   );
 
-  if (status === 429 || isRateLimited(body)) {
-    throw new Error(`${url.host} is rate-limiting requests`);
-  }
   if (status < 200 || status >= 300 || !body) {
     throw new Error(`Explorer request failed: ${status}`);
   }
   return body;
 }
-
-async function send<T>(
-  url: URL,
-  init: RequestInit
-): Promise<{ status: number; body?: ExplorerResponse<T> }> {
-  const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, { ...init, signal });
-    const body =
-      response.status === 429
-        ? undefined
-        : ((await response.json().catch(() => undefined)) as
-            | ExplorerResponse<T>
-            | undefined);
-    // The body read swallows its own errors, an abort included.
-    signal.throwIfAborted();
-    return { status: response.status, body };
-  } catch (error) {
-    if (!signal.aborted) throw error;
-    throw new Error(
-      `${url.host} didn't answer within ${REQUEST_TIMEOUT_MS / 1_000}s`
-    );
-  }
-}
-
-const REQUEST_TIMEOUT_MS = 20_000;
 
 // Etherscan allows 3 calls/s per API key, shared by every chain on V2.
 const REQUEST_INTERVAL_MS = 400;
@@ -295,8 +267,6 @@ function isRateLimited(body: any): boolean {
   // "rate limit" is Etherscan phrasing, "too many requests" is Blockscout's.
   return text.includes("rate limit") || text.includes("too many requests");
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function resolveApiKey(network: string, explicit?: string): string {
   return (
