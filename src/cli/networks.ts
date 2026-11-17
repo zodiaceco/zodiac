@@ -54,13 +54,15 @@ const etherscanV2 = (chainId: number): string | null =>
 /**
  * Resolve a JSON-RPC URL for a network: Alchemy when an `ALCHEMY_KEY` is set
  * and Alchemy serves the chain, otherwise the configured public RPC, otherwise
- * the Gnosis Guild multichain RPC fallback. Always returns a usable URL.
+ * the Zodiac public RPC gateway.
  */
 export function rpcUrlFor(network: NetworkConfig): string {
   if (network.alchemyRpcUrl && (process.env.ALCHEMY_KEY ?? "")) {
     return network.alchemyRpcUrl;
   }
-  return network.publicRpc ?? `https://rpc.gnosisguild.org/${network.chainId}`;
+  return (
+    network.publicRpc ?? `https://public-rpc.zodiac.eco/${network.chainId}`
+  );
 }
 
 export interface NetworkConfig {
