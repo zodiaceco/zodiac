@@ -28,6 +28,7 @@ export enum MastercopyName {
   MULTISEND_ENCODER = "multisendEncoder",
   MULTISEND_UNWRAPPER = "multiSendUnwrapper",
   CONNEXT = "connext",
+  SIGN_TYPED_MESSAGE_LIB = "signTypedMessageLib",
 }
 
 /** Canonical mastercopy address for each known contract, by version. */
@@ -109,6 +110,9 @@ export const CanonicalAddresses: Record<
   },
   [MastercopyName.CONNEXT]: {
     "1.0.0": "0x7dE07b9De0bf0FABf31A188DE1527034b2aF36dB",
+  },
+  [MastercopyName.SIGN_TYPED_MESSAGE_LIB]: {
+    "1.0.0": "0x0c9504f08AbD65f57c8CE82d0A7c1236D4daDD14",
   },
 };
 

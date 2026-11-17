@@ -17,7 +17,30 @@ export async function run(args: string[]): Promise<void> {
   });
 }
 
-const DEFAULT_NETWORKS = ["mainnet", "gnosis", "arbitrum", "optimism", "base"];
+// Tried in order until one yields a complete artifact. Limited to networks
+// whose explorer serves both the verified source and the creation transaction.
+const DEFAULT_NETWORKS = [
+  "mainnet",
+  "gnosis",
+  "arbitrum",
+  "optimism",
+  "base",
+  "unichain",
+  "polygon",
+  "sonic",
+  "worldchain",
+  "hyperliquid",
+  "megaeth",
+  "mantle",
+  "plasma",
+  "celo",
+  "ink",
+  "linea",
+  "berachain",
+  "katana",
+  "baseSepolia",
+  "sepolia",
+];
 
 async function extractMastercopy({
   mastercopy: { name, version, address },

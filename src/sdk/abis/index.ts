@@ -32,6 +32,7 @@ import { roles_1_1_0_ABI } from "./roles/1.1.0.js";
 import { roles_2_1_0_ABI } from "./roles/2.1.0.js";
 import { roles_2_1_1_ABI } from "./roles/2.1.1.js";
 import { scopeGuard_1_0_0_ABI } from "./scopeGuard/1.0.0.js";
+import { signTypedMessageLib_1_0_0_ABI } from "./signTypedMessageLib/1.0.0.js";
 import { tellor_2_1_0_ABI } from "./tellor/2.1.0.js";
 
 export const ABIs = {
@@ -105,6 +106,9 @@ export const ABIs = {
   },
   scopeGuard: {
     "1.0.0": scopeGuard_1_0_0_ABI,
+  },
+  signTypedMessageLib: {
+    "1.0.0": signTypedMessageLib_1_0_0_ABI,
   },
   tellor: {
     "2.1.0": tellor_2_1_0_ABI,
