@@ -9,7 +9,7 @@ A composable design philosophy for DAOs, [Zodiac](https://gnosisguild.mirror.xyz
 
 The Zodiac collection of tools can be accessed through the Zodiac App available on [Safe](https://safe.global/), as well as through the repositories below. If you have any questions about Zodiac, join the [Gnosis Guild Discord](https://discord.gnosisguild.org).
 
-This repository links to technical tutorials on how to configure each using the CLI. (For operator tutorials, visit [zodiac.wiki](https://zodiac.wiki/documentation).)
+This repository holds the mastercopy registry and tooling, and links to each tool's own repository below. (For operator tutorials, visit [zodiac.wiki](https://zodiac.wiki/documentation).)
 
 Zodiac enables:
 
@@ -31,7 +31,7 @@ The Zodiac open standard consists of Avatars, Modules, Modifiers, and Guards arc
 
 This repository contains the Zodiac mastercopy registry and tooling: a small TypeScript SDK with the known Zodiac contracts, their canonical addresses and per-version ABIs, plus a maintenance CLI that extracts deployed mastercopies (ABI, source and deployment data) from block explorers into a versioned `mastercopies/` folder.
 
-The Zodiac core contracts (`Module.sol`, `Modifier.sol`, `BaseGuard.sol`, `ModuleProxyFactory.sol`, etc.), along with their tests and audits, live in [zodiac-core](https://github.com/gnosisguild/zodiac-core). If you are building a module, modifier, or guard, use the `@gnosis-guild/zodiac-core` package.
+The Zodiac core contracts (`Module.sol`, `Modifier.sol`, `BaseGuard.sol`, `ModuleProxyFactory.sol`, etc.), along with their tests, live in [zodiac-core](https://github.com/gnosisguild/zodiac-core). If you are building a module, modifier, or guard, use the `@gnosis-guild/zodiac-core` package.
 
 ### Installation
 
@@ -43,10 +43,16 @@ The package ships both ESM and CommonJS builds.
 
 ### Usage
 
-To build your own contract based on the Zodiac core contracts, install [zodiac-core](https://github.com/gnosisguild/zodiac-core) and import from it:
+See [Mastercopies](#mastercopies) below for the SDK.
+
+To build your own contract based on the Zodiac core contracts, install [zodiac-core](https://github.com/gnosisguild/zodiac-core) instead and import from it:
+
+```bash
+yarn add @gnosis-guild/zodiac-core
+```
 
 ```solidity
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.24;
 
 import "@gnosis-guild/zodiac-core/contracts/core/Module.sol";
 
@@ -58,11 +64,9 @@ contract MyModule is Module {
 
 ### Mastercopies
 
-The npm package publishes a small TypeScript SDK: the known-contract registry,
-canonical mastercopy addresses, the supported-network list, and per-version
-ABIs. The versioned `mastercopies/` folder (the extracted ABI, source and
-deployment artifacts) is repo-maintenance data and is **not** published to npm —
-neither is the maintenance CLI.
+The npm package publishes the SDK only: the known-contract registry, canonical
+mastercopy addresses, the supported-network list, and per-version ABIs. The
+`mastercopies/` folder and the maintenance CLI are **not** published to npm.
 
 ```ts
 import { Contract, type ContractRunner, type InterfaceAbi } from "ethers";
@@ -105,6 +109,7 @@ bun run deploy <name> <version> [--network a,b]        # deploy missing contract
 bun run deploy:list <name> [version] [--network a,b]   # report per-network deployment status
 bun run verify <name> <version> [--network a,b]        # verify deployed contracts on each explorer
 bun run verify:list <name> [version] [--network a,b]   # report per-network verification status
+bun run abigen                                         # mastercopies/ -> src/sdk/abis (runs before every build)
 ```
 
 **`extract`** captures one mastercopy into `mastercopies/` and replaces the
@@ -127,19 +132,25 @@ mastercopies/<name>/<version>/<contract>/deployment.json   # address, plus facto
 **`deploy`** redeploys those contracts to their canonical addresses on each
 configured network (via the ERC-2470 / Nick CREATE2 singleton factories),
 skipping any that already exist; **`verify`** submits the bundled source to each
-configured explorer (Etherscan V2, or a chain-specific Etherscan-compatible
-explorer — e.g. a Blockscout instance — where Etherscan V2 is unavailable). The
-`list` subcommands report status without making changes, for every known version
-unless `[version]` is given. `--network` limits a command to the given networks
-(names or chain ids).
+network's explorer (Etherscan V2, or a chain-specific Etherscan-compatible
+explorer — e.g. a Blockscout instance — where Etherscan V2 is unavailable) and
+to Sourcify on every chain Sourcify supports. The explorer decides whether a
+network passes; a failed Sourcify submission is reported as a warning and
+retried on the next run, and an unreachable Sourcify doesn't fail a network the
+explorer reports as verified — except where Sourcify is the only option, as on
+BOB. Rate-limited requests are retried a few times with a doubling backoff
+before giving up. The `list` subcommands report status without making changes,
+for every known version unless `[version]` is given. `--network` limits a
+command to the given networks (names or chain ids).
 
 #### Environment
 
 Configure these in a `.env` file — see `.env.sample`:
 
-- `ETHERSCAN_API_KEY` — Etherscan V2 key (works across all supported chains).
-  Override per network with `ETHERSCAN_API_KEY_<NETWORK>`. Used by `extract` and
-  `verify`.
+- `ETHERSCAN_API_KEY` — Etherscan V2 key, shared by every chain on Etherscan V2.
+  Override per network with `ETHERSCAN_API_KEY_<NETWORK>` (e.g. for a
+  chain-specific explorer such as Scrollscan). The Blockscout explorers (Ink,
+  Robinhood) ignore it, and Sourcify needs none. Used by `extract` and `verify`.
 - `ALCHEMY_KEY` — optional; used for RPC on the chains Alchemy serves. Public
   endpoints are used otherwise.
 - `MNEMONIC` — signer used by `deploy` (local signing, the default).
@@ -149,8 +160,9 @@ Configure these in a `.env` file — see `.env.sample`:
   Frame must be running and `MNEMONIC` is ignored.
 
 > The legacy bundled-ABI SDK (`MasterCopyInitData`, `ContractFactories`,
-> `deployAndSetUpModule`, …) was removed in v5. `KnownContracts` is now
-> `MastercopyName`; the canonical-address registry (`CanonicalAddresses`) is kept.
+> `deployAndSetUpModule`, …) was removed in v5. In v6, `KnownContracts` became
+> `MastercopyName` and the `@gnosis-guild/zodiac-core` re-exports were dropped;
+> the canonical-address registry (`CanonicalAddresses`) is kept.
 
 ### Zodiac compliant tools
 
@@ -162,8 +174,8 @@ Configure these in a `.env` file — see `.env.sample`:
 
 - **[Bridge](https://github.com/gnosisguild/zodiac-module-bridge)** (developed by [Gnosis Guild](https://twitter.com/gnosisguild)): This module allows an address on one chain to control an avatar on another chain using an Arbitrary Message Bridge (AMB). This enables a DAO on one chain to control assets and interact with systems like a Safe on a different chain.
 - **[Exit](https://github.com/gnosisguild/zodiac-module-exit)** (developed by [Gnosis Guild](https://twitter.com/gnosisguild)): This module allows users to redeem a designated token for a relative share of an avatar's assets, similar to MolochDAO's infamous rageQuit() function.
-- **[Governor](https://github.com/gnosisguild/zodiac-module-oz-governor/)** (Developed by [Gnosis Guild](https://twitter.com/gnosisguild)): An opinionated implementation of [OpenZeppelin's Governor contracts](https://docs.openzeppelin.com/contracts/4.x/api/governance) designed to be used in a Zodiac-style setup, allowing a Avatar (like a Safe) to controlled by on-chain governance similar to [Compound's Governor Alpha and Bravo](https://compound.finance/docs/governance).
-- **[Optimistic Governor](https://docs.outcome.finance/optimistic-governance/what-is-the-optimistic-governor)** (developed by [Outcome Finance](https://www.outcome.finance/): This module allows on-chain executions based on Snapshot proposal results. The module utilizes UMA's optimistic oracle to govern a Safe based on a set of rules defined off-chain.
+- **[Governor](https://github.com/gnosisguild/zodiac-module-oz-governor/)** (Developed by [Gnosis Guild](https://twitter.com/gnosisguild)): An opinionated implementation of [OpenZeppelin's Governor contracts](https://docs.openzeppelin.com/contracts/4.x/api/governance) designed to be used in a Zodiac-style setup, allowing an Avatar (like a Safe) to be controlled by on-chain governance similar to [Compound's Governor Alpha and Bravo](https://compound.finance/docs/governance).
+- **[Optimistic Governor](https://docs.outcome.finance/optimistic-governance/what-is-the-optimistic-governor)** (developed by [Outcome Finance](https://www.outcome.finance/)): This module allows on-chain executions based on Snapshot proposal results. The module utilizes UMA's optimistic oracle to govern a Safe based on a set of rules defined off-chain.
 - **[Reality](https://github.com/gnosisguild/zodiac-module-reality)** (developed by [Gnosis Guild](https://twitter.com/gnosisguild)): This module allows on-chain execution based on the outcome of events reported by Reality.eth. While built initially to execute Safe transactions according to Snapshot proposals, this module is framework agnostic. It can enable proposal execution from just about anywhere. For example, it can bring Discord polls on-chain.
 - **[Safe Minion](https://github.com/HausDAO/MinionSummonerV2/blob/main/contracts/SafeMinion.sol)** (developed by [DAOHaus](https://daohaus.club)): This module allows Moloch DAOs to manage the assets in a Safe based on the outcome of v2 Moloch DAO proposals. Safe Minion enables Moloch DAOs to manage collections of NFTs, manage LP positions with AMMs, and initiate any other arbitrary interactions. It enables DAOs that start as a Safe to later delegate governance to a Moloch DAO.
 - **[Tellor](https://github.com/tellor-io/snapshot-zodiac-module)** (developed by [Tellor](https://tellor.io)): This module allows on-chain executions based on Snapshot proposal results, it uses the Tellor oracle to retrieve the data in a secure and decentralized manner.
@@ -185,7 +197,7 @@ Have you built something cool that belongs in this collection of Zodiac tools an
 
 If you have any questions about Zodiac, join the [Gnosis Guild Discord](https://discord.gnosisguild.org/). Follow [@GnosisGuild](https://twitter.com/gnosisguild) on Twitter for updates.
 
-The [Zodiac documentation](https://github.com/gnosisguild/zodiac) offers tutorials on how to use the Zodiac App, and detailed developer resources on how to build your own Zodiac module, modifier, or guard will be available soon.
+The [Zodiac documentation](https://zodiac.wiki/documentation) offers tutorials on how to use the Zodiac App. To build your own Zodiac module, modifier, or guard, start from [zodiac-core](https://github.com/gnosisguild/zodiac-core).
 
 ### Zodiac Banners and Badges
 
@@ -233,9 +245,15 @@ All issues and notes of the audit have been addressed in the release candidate [
 
 The audit results are available as a pdf [in this repo](./audits/GnosisZodiac2021Sep.pdf) or in the [g0-group's github repo](https://github.com/g0-group/Audits/blob/master/GnosisZodiac2021Sep.pdf).
 
+Later audit reports are in the [audits](./audits) folder:
+
+- [February 2023](./audits/ZodiacModifierUpdateFeb2023.pdf): modifier update.
+- [June 2026](./audits/ZodiacJune2026.pdf), by Côme du Crest: the signature-check patch in Delay v1.1.1 and Roles v2.1.1.
+- [October 2026](./audits/ZodiacOctober2026.pdf), by Côme du Crest: [zodiac-core](https://github.com/gnosisguild/zodiac-core) and [Roles](https://github.com/gnosisguild/zodiac-modifier-roles) v3.
+
 ### Security and Liability
 
-All contracts are WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+All contracts and tooling are WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ### License
 
