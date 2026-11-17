@@ -5,7 +5,5 @@ env/
 .history
 sdk/types
 dist/
-yarn-error.log
 .docusaurus
 .idea
-.yarn

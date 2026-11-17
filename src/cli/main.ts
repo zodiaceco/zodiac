@@ -1,6 +1,4 @@
-#!/usr/bin/env node
-import "dotenv/config";
-
+#!/usr/bin/env bun
 import * as deploy from "./commands/deploy.js";
 import * as extract from "./commands/extract.js";
 import * as verify from "./commands/verify.js";

@@ -14,8 +14,11 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           scope: "@gnosis-guild"
-      - run: yarn
-      - run: yarn build
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run build
       - run: npm publish --access public --non-interactive
         env:
           NPM_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
