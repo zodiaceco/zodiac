@@ -1,0 +1,110 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "compValue",
+        "type": "bytes"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "enum Operation",
+        "name": "operation",
+        "type": "Operation"
+      },
+      {
+        "internalType": "uint256",
+        "name": "location",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "size",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "allowanceKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "balance",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "consumed",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Consumption[]",
+        "name": "consumptions",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "pluckedValues",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "check",
+    "outputs": [
+      {
+        "internalType": "enum Status",
+        "name": "",
+        "type": "Status"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "allowanceKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "balance",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "consumed",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Consumption[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

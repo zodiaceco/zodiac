@@ -85,6 +85,7 @@ export const CanonicalAddresses: Record<
     "1.1.0": "0xD8DfC1d938D7D163C5231688341e9635E9011889",
     "2.1.0": "0x9646fDAD06d3e24444381f44362a3B0eB343D337",
     "2.1.1": "0xf2964ce6161ce0e75964fe7927ce114cb0b283d5",
+    "3.0.0": "0x31a02f5AeFcC93022d04b6B1acB593a4e8fd7948",
   },
   [MastercopyName.TELLOR]: {
     "2.1.0": "0xa89EC2C1e218CfBb0F82829E95352CeAbDEe9A69",

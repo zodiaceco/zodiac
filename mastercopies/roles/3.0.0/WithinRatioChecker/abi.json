@@ -1,0 +1,26 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "compValue",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "pluckedValues",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "check",
+    "outputs": [
+      {
+        "internalType": "enum Status",
+        "name": "",
+        "type": "Status"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

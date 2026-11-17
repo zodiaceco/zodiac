@@ -1,0 +1,233 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "AllowanceDecimalsExceedMax",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "ConditionChildCountExceedsMax",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "ConditionInlinedSizeExceedsMax",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ConditionNodeCountExceedsMax",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "pluckIndex",
+        "type": "uint8"
+      }
+    ],
+    "name": "DuplicatePluckIndex",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "LeafNodeCannotHaveChildren",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotBFS",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "pluckIndex",
+        "type": "uint8"
+      }
+    ],
+    "name": "PluckNotVisitedBeforeRef",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "SliceChildNotStatic",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "UnsuitableChildCount",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "UnsuitableChildTypeTree",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "UnsuitableCompValue",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "UnsuitableParameterType",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuitableRootNode",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "UnsupportedOperator",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "WithinRatioMinExceedsMax",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "WithinRatioNoRatioProvided",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "WithinRatioTargetNotStatic",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint16",
+            "name": "parent",
+            "type": "uint16"
+          },
+          {
+            "internalType": "enum Encoding",
+            "name": "paramType",
+            "type": "Encoding"
+          },
+          {
+            "internalType": "enum Operator",
+            "name": "operator",
+            "type": "Operator"
+          },
+          {
+            "internalType": "bytes",
+            "name": "compValue",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct ConditionFlat[]",
+        "name": "conditions",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "pack",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "buffer",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]
