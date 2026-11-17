@@ -1,0 +1,78 @@
+[
+  {
+    "inputs": [],
+    "name": "MalformedBody",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MalformedHeader",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsupportedMode",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "enum Operation",
+        "name": "operation",
+        "type": "uint8"
+      }
+    ],
+    "name": "unwrap",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "enum Operation",
+            "name": "operation",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "dataLocation",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "dataSize",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct UnwrappedTransaction[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]
